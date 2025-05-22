@@ -388,7 +388,7 @@ class AjusteCurvaGUI:
     def selecionar_arquivo(self):
         filename = filedialog.askopenfilename(
             title="Selecionar arquivo de dados",
-            filetypes=[("Arquivos de texto", "*.txt"), ("Todos os arquivos", "*.*")]
+            filetypes=[("Arquivos de texto ou CSV", "*.txt *.csv"), ("Todos os arquivos", "*.*")]
         )
         if filename:
             self.arquivo_entry.delete(0, tk.END)
@@ -421,26 +421,33 @@ class AjusteCurvaGUI:
             messagebox.showerror("Erro", f"Erro ao processar equação: {str(e)}")
             
     def ler_arquivo(self, nome_arquivo):
-    # Verifica se o arquivo existe
         if not os.path.isfile(nome_arquivo):
             messagebox.showerror("Erro ao ler arquivo", f"O arquivo '{nome_arquivo}' não foi encontrado.")
             raise FileNotFoundError(f"O arquivo '{nome_arquivo}' não foi encontrado.")
         try:
+            # Detecta o tipo de separador pelo sufixo do arquivo
+            _, ext = os.path.splitext(nome_arquivo)
+            if ext.lower() == ".csv":
+                delimiter = ','
+            else:
+                delimiter = '\t'
+
             with open(nome_arquivo, 'r') as f:
                 header = f.readline()
                 lines = f.readlines()
             if len(lines) == 0:
                 messagebox.showerror("Erro ao ler arquivo", "O arquivo está vazio ou só contém o cabeçalho.")
                 raise ValueError("O arquivo está vazio ou só contém o cabeçalho.")
-            # Checar se há pelo menos 4 colunas por linha
+
+            # Checa número de colunas de forma genérica (funciona para ambos formatos)
             for i, line in enumerate(lines):
-                parts = line.strip().split('\t')
+                parts = line.strip().split(delimiter)
                 if len(parts) != 4:
                     messagebox.showerror("Erro ao ler arquivo",
-                        f"O arquivo precisa ter 4 colunas separadas por tabulação (linha {i+2}).")
-                    raise ValueError(f"O arquivo precisa ter 4 colunas separadas por tabulação (linha {i+2}).")
-            # Carregar dados usando numpy
-            dados = np.genfromtxt(nome_arquivo, delimiter='\t', skip_header=1, dtype=str)
+                        f"O arquivo precisa ter 4 colunas separadas por '{delimiter}' (linha {i+2}).")
+                    raise ValueError(f"O arquivo precisa ter 4 colunas separadas por '{delimiter}' (linha {i+2}).")
+            # Carrega dados usando numpy
+            dados = np.genfromtxt(nome_arquivo, delimiter=delimiter, skip_header=1, dtype=str)
             dados = np.char.replace(dados, ',', '.')
             x = dados[:, 0].astype(float)
             sigma_x = dados[:, 1].astype(float)
@@ -450,6 +457,7 @@ class AjusteCurvaGUI:
         except Exception as e:
             messagebox.showerror("Erro ao ler arquivo", f"Erro ao processar o arquivo:\n{str(e)}")
             raise
+
     
     def criar_modelo(self, equacao, parametros):
         x = sp.Symbol('x')
