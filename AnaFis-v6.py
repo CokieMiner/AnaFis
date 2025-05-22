@@ -8,7 +8,22 @@ from tkinter import ttk, filedialog, messagebox, Toplevel
 from tkinter.scrolledtext import ScrolledText
 import math
 import os
+import threading
 
+class ProgressTracker:
+    def __init__(self, progress_var, status_label, odr_object):
+        self.progress_var = progress_var
+        self.status_label = status_label
+        self.odr = odr_object
+        self.last_iter = 0
+        
+    def update(self):
+        current_iter = self.odr.iwork[0]  # Current iteration number
+        if current_iter != self.last_iter:
+            self.last_iter = current_iter
+            self.status_label.config(text=f"Iteração: {current_iter}")
+            self.progress_var.set(min(100, current_iter * 10))
+        
 class AplicativoUnificado:
     def __init__(self):
         self.root = tk.Tk()
@@ -280,8 +295,12 @@ class AjusteCurvaGUI:
         self.root = root
         self.root.title("Ajuste de Curvas")
         
-        # Configurar o layout principal
-        self.root.columnconfigure(1, weight=1)
+        # Definir tamanho inicial da janela
+        self.root.geometry("1200x800")  # Tamanho mais adequado
+        
+        # Configurar o layout principal com pesos
+        self.root.columnconfigure(0, weight=2)  # Coluna dos parâmetros
+        self.root.columnconfigure(1, weight=3)  # Coluna do gráfico
         self.root.rowconfigure(0, weight=1)
         
         # Variáveis para armazenar dados
@@ -293,47 +312,131 @@ class AjusteCurvaGUI:
         # Criar painéis
         self.criar_painel_parametros()
         self.criar_painel_grafico()
-        
+
+        style = ttk.Style()
+        style.configure("Accent.TButton", font=('Helvetica', 10, 'bold'))
+
+    def atualizar_escalas(self):
+        if self.x_scale.get() == "Log":
+            self.ax.set_xscale('log')
+        else:
+            self.ax.set_xscale('linear')
+            
+        if self.y_scale.get() == "Log":
+            self.ax.set_yscale('log')
+        else:
+            self.ax.set_yscale('linear')
+       
     def criar_painel_parametros(self):
-        # Frame esquerdo para parâmetros
+    # Frame esquerdo para parâmetros com padding e borda
         left_frame = ttk.Frame(self.root, padding="10")
         left_frame.grid(row=0, column=0, sticky="nsew")
         
-        # Widgets para entrada de dados
-        ttk.Label(left_frame, text="Arquivo de Dados:").grid(row=0, column=0, sticky="w", pady=5)
-        self.arquivo_entry = ttk.Entry(left_frame, width=40)
+        # Frame para dados de entrada
+        dados_frame = ttk.LabelFrame(left_frame, text="Dados de Entrada", padding="5")
+        dados_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0,10))
+        
+        # Arquivo de dados
+        ttk.Label(dados_frame, text="Arquivo de Dados:").grid(row=0, column=0, sticky="w", pady=5)
+        self.arquivo_entry = ttk.Entry(dados_frame, width=40)
         self.arquivo_entry.grid(row=1, column=0, sticky="ew", padx=5)
-        ttk.Button(left_frame, text="Procurar", command=self.selecionar_arquivo).grid(row=1, column=1)
+        ttk.Button(dados_frame, text="Procurar", command=self.selecionar_arquivo).grid(row=1, column=1)
         
-        ttk.Label(left_frame, text="Equação:").grid(row=2, column=0, sticky="w", pady=5)
-        self.equacao_entry = ttk.Entry(left_frame, width=40)
-        self.equacao_entry.grid(row=3, column=0, columnspan=2, sticky="ew", pady=5)
+        # Equação e parâmetros do ajuste
+        ajuste_frame = ttk.LabelFrame(left_frame, text="Parâmetros do Ajuste", padding="5")
+        ajuste_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
-        ttk.Label(left_frame, text="Número máximo de iterações:").grid(row=5, column=0, sticky="w", pady=5)
-        self.max_iter_entry = ttk.Entry(left_frame, width=10)
+        ttk.Label(ajuste_frame, text="Equação:").grid(row=0, column=0, sticky="w", pady=5)
+        self.equacao_entry = ttk.Entry(ajuste_frame, width=40)
+        self.equacao_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
+        
+        # Frame para configurações numéricas
+        config_frame = ttk.Frame(ajuste_frame)
+        config_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
+        
+        ttk.Label(config_frame, text="Máx. iterações:").grid(row=0, column=0, sticky="w")
+        self.max_iter_entry = ttk.Entry(config_frame, width=8)
         self.max_iter_entry.insert(0, "1000")
-        self.max_iter_entry.grid(row=5, column=1, sticky="w", pady=5)
+        self.max_iter_entry.grid(row=0, column=1, padx=5)
         
-        ttk.Label(left_frame, text="Título do gráfico:").grid(row=6, column=0, sticky="w", pady=5)
-        self.titulo_entry = ttk.Entry(left_frame, width=40)
-        self.titulo_entry.grid(row=7, column=0, columnspan=2, sticky="ew", pady=5)
+        ttk.Label(config_frame, text="Pontos do ajuste:").grid(row=0, column=2, sticky="w", padx=(10,0))
+        self.num_points_entry = ttk.Entry(config_frame, width=8)
+        self.num_points_entry.insert(0, "1000")
+        self.num_points_entry.grid(row=0, column=3, padx=5)
         
-        # Frame para estimativas iniciais (será preenchido dinamicamente)
+        # Frame para configurações do gráfico
+        grafico_frame = ttk.LabelFrame(left_frame, text="Configurações do Gráfico", padding="5")
+        grafico_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0,10))
+        
+        ttk.Label(grafico_frame, text="Título:").grid(row=0, column=0, sticky="w", pady=5)
+        self.titulo_entry = ttk.Entry(grafico_frame, width=40)
+        self.titulo_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
+        
+        # Escalas
+        scale_frame = ttk.Frame(grafico_frame)
+        scale_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
+        
+        ttk.Label(scale_frame, text="Escala X:").grid(row=0, column=0, padx=5)
+        self.x_scale = ttk.Combobox(scale_frame, values=["Linear", "Log"], state="readonly", width=8)
+        self.x_scale.set("Linear")
+        self.x_scale.grid(row=0, column=1, padx=5)
+        
+        ttk.Label(scale_frame, text="Escala Y:").grid(row=0, column=2, padx=(10,5))
+        self.y_scale = ttk.Combobox(scale_frame, values=["Linear", "Log"], state="readonly", width=8)
+        self.y_scale.set("Linear")
+        self.y_scale.grid(row=0, column=3, padx=5)
+        
+        # Frame para estimativas iniciais
         self.estimativas_frame = ttk.LabelFrame(left_frame, text="Estimativas Iniciais", padding="5")
-        self.estimativas_frame.grid(row=8, column=0, columnspan=2, sticky="ew", pady=10)
+        self.estimativas_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
-        # Botão de ajuste
-        ttk.Button(left_frame, text="Realizar Ajuste", command=self.realizar_ajuste).grid(row=9, column=0, columnspan=2, pady=10)
+        # Frame para progresso
+        progress_frame = ttk.LabelFrame(left_frame, text="Progresso", padding="5")
+        progress_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
-        # Área de resultados
-        ttk.Label(left_frame, text="Resultados:").grid(row=10, column=0, sticky="w", pady=5)
-        self.resultados_text = ScrolledText(left_frame, height=10, width=40)
-        self.resultados_text.grid(row=11, column=0, columnspan=2, sticky="ew", pady=5)
-    
-        # Adicionar botão para salvar gráfico
-        ttk.Button(left_frame, text="Salvar Gráfico", command=self.salvar_grafico).grid(row=12, column=0, columnspan=2, pady=10, sticky="ew")
+        self.progress_var = tk.IntVar()
+        self.progress_bar = ttk.Progressbar(
+            progress_frame, 
+            variable=self.progress_var,
+            maximum=100
+        )
+        self.progress_bar.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+        
+        self.status_label = ttk.Label(progress_frame, text="")
+        self.status_label.grid(row=1, column=0, sticky="w", padx=5)
+        
+        # Frame para resultados
+        resultados_frame = ttk.LabelFrame(left_frame, text="Resultados", padding="5")
+        resultados_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(0,10))
+        
+        self.resultados_text = ScrolledText(resultados_frame, height=8, width=40)
+        self.resultados_text.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+        
+        # Botões de ação
+        botoes_frame = ttk.Frame(left_frame)
+        botoes_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(0,5))
+        
+        ttk.Button(
+            botoes_frame, 
+            text="Realizar Ajuste",
+            style="Accent.TButton",
+            command=self.realizar_ajuste
+        ).grid(row=0, column=0, pady=5, padx=5, sticky="ew")
+        
+        ttk.Button(
+            botoes_frame,
+            text="Salvar Gráfico",
+            command=self.salvar_grafico
+        ).grid(row=0, column=1, pady=5, padx=5, sticky="ew")
+        
+        # Configurar pesos das colunas
+        botoes_frame.columnconfigure(0, weight=1)
+        botoes_frame.columnconfigure(1, weight=1)
+        
+        # Bindings
         self.equacao_entry.bind("<FocusOut>", lambda e: self.atualizar_estimativas_frame())
-
+        self.x_scale.bind('<<ComboboxSelected>>', lambda e: self.atualizar_escalas())
+        self.y_scale.bind('<<ComboboxSelected>>', lambda e: self.atualizar_escalas())
 
     def salvar_grafico(self):
         try:
@@ -376,14 +479,26 @@ class AjusteCurvaGUI:
             )
 
     def criar_painel_grafico(self):
-        # Frame direito para o gráfico
+    # Frame direito para o gráfico com padding
         right_frame = ttk.Frame(self.root, padding="10")
         right_frame.grid(row=0, column=1, sticky="nsew")
         
+        # Frame para o gráfico
+        graph_frame = ttk.LabelFrame(right_frame, text="Gráfico do Ajuste", padding="5")
+        graph_frame.grid(row=0, column=0, sticky="nsew")
+        
+        # Configurar o tamanho da figura
+        self.fig = plt.figure(figsize=(8, 6))
+        self.ax = self.fig.add_subplot(111)
+        
         # Canvas para o gráfico
-        self.canvas = FigureCanvasTkAgg(self.fig, master=right_frame)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=graph_frame)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Configurar peso da coluna
+        right_frame.columnconfigure(0, weight=1)
+        right_frame.rowconfigure(0, weight=1)
         
     def selecionar_arquivo(self):
         filename = filedialog.askopenfilename(
@@ -472,42 +587,89 @@ class AjusteCurvaGUI:
     
     def realizar_ajuste(self):
         try:
+            num_points = int(self.num_points_entry.get())
+            if num_points <= 0:
+                raise ValueError("O número de pontos deve ser positivo")
+        except ValueError as e:
+            messagebox.showerror("Erro", "Por favor, insira um número válido de pontos para o ajuste.")
+            return
+        try:
+            # Reset progress and status
+            self.progress_var.set(0)
+            self.status_label.config(text="Iniciando ajuste...")
+            self.root.update()
+
+            # Clear previous results
             self.resultados_text.delete(1.0, tk.END)
-            # Atualizar estimativas se necessário
+            
+            # Update estimates if needed
             if not self.parametros:
                 self.atualizar_estimativas_frame()
                 
-            # Obter valores dos campos
+            # Get field values
             caminho = self.arquivo_entry.get()
             equacao = self.equacao_entry.get().replace('^', '**')
             if '=' in equacao:
                 equacao = equacao.split('=')[1].strip()
             max_iter = int(self.max_iter_entry.get())
             
-            # Obter estimativas iniciais
+            # Get initial estimates
             chute = []
             for param in self.parametros:
                 entry = getattr(self, f"estimate_{param}")
                 chute.append(float(entry.get()))
                 
-            # Carregar dados
-            x, sigma_x, y, sigma_y = self.ler_arquivo(caminho)
+            # Load data
+            self.x, self.sigma_x, self.y, self.sigma_y = self.ler_arquivo(caminho)
             with open(caminho, 'r') as f:
-                cabecalho = f.readline().strip().split('\t')
+                self.cabecalho = f.readline().strip().split('\t')
                 
-            # Criar modelo
-            modelo, derivadas = self.criar_modelo(equacao, self.parametros)
-            modelo_odr = Model(ModeloODR(modelo, derivadas))
+            # Create model
+            self.modelo, derivadas = self.criar_modelo(equacao, self.parametros)
+            modelo_odr = Model(ModeloODR(self.modelo, derivadas))
+            self.equacao = equacao
+
+            # Execute ODR
+            dados = RealData(self.x, self.y, sx=self.sigma_x, sy=self.sigma_y)
+            self.odr = ODR(dados, modelo_odr, beta0=chute, maxit=max_iter)
             
-            # Executar ODR
-            dados = RealData(x, y, sx=sigma_x, sy=sigma_y)
-            odr = ODR(dados, modelo_odr, beta0=chute, maxit=max_iter)
-            resultado = odr.run()
+            def run_odr():
+                try:
+                    resultado = self.odr.run()
+                    self.root.after(0, lambda: self.mostrar_resultados(resultado))
+                    self.root.after(0, lambda: self.status_label.config(text="Ajuste concluído!"))
+                except Exception as e:
+                    self.root.after(0, lambda: messagebox.showerror("Erro", f"Erro durante o ajuste: {str(e)}"))
+                    self.root.after(0, lambda: self.status_label.config(text="Erro no ajuste!"))
+
+            def update_progress():
+                if hasattr(self, 'odr'):
+                    try:
+                        current_iter = self.odr.iwork[0]
+                        self.progress_var.set(min(100, current_iter * 10))
+                        self.status_label.config(text=f"Iteração: {current_iter}")
+                        if current_iter < max_iter:
+                            self.root.after(100, update_progress)
+                    except:
+                        pass
+
+            # Start progress updates
+            self.root.after(100, update_progress)
             
-            # Calcular estatísticas
-            y_pred = modelo(resultado.beta, x)
-            chi2_total = np.sum(((y - y_pred) / sigma_y) ** 2)
-            r2 = 1 - np.sum((y - y_pred) ** 2) / np.sum((y - np.mean(y)) ** 2)
+            # Start ODR in separate thread
+            threading.Thread(target=run_odr, daemon=True).start()
+
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro durante o ajuste: {str(e)}")
+            self.resultados_text.insert(tk.END, "Ocorreu um erro. Verifique os dados e tente novamente.\n")
+    
+   
+    def mostrar_resultados(self, resultado):
+        try:
+        # Calcular estatísticas
+            y_pred = self.modelo(resultado.beta, self.x)
+            chi2_total = np.sum(((self.y - y_pred) / self.sigma_y) ** 2)
+            r2 = 1 - np.sum((self.y - y_pred) ** 2) / np.sum((self.y - np.mean(self.y)) ** 2)
             
             # Mostrar resultados
             self.resultados_text.delete(1.0, tk.END)
@@ -520,23 +682,26 @@ class AjusteCurvaGUI:
             
             # Atualizar gráfico
             self.ax.clear()
-            self.ax.errorbar(x, y, xerr=sigma_x, yerr=sigma_y, fmt='o', label='Dados')
-            x_fit = np.linspace(min(x), max(x), 100)
-            self.ax.plot(x_fit, modelo(resultado.beta, x_fit), 'r-', label='Ajuste')
-            self.ax.set_xlabel(cabecalho[0])
-            self.ax.set_ylabel(cabecalho[2])
+            self.ax.errorbar(self.x, self.y, xerr=self.sigma_x, yerr=self.sigma_y, fmt='o', label='Dados')
+            num_points = int(self.num_points_entry.get())
+            x_fit = np.linspace(min(self.x), max(self.x), num_points)
+            self.ax.plot(x_fit, self.modelo(resultado.beta, x_fit), 'r-', label='Ajuste')
+            
+            # Atualizar escalas antes de plotar
+            self.atualizar_escalas()
+            
+            # Título e labels
+            if self.titulo_entry.get():
+                self.ax.set_title(self.titulo_entry.get())
+            self.ax.set_xlabel(self.cabecalho[0])
+            self.ax.set_ylabel(self.cabecalho[2])
             self.ax.legend()
             self.ax.grid(True)
             
-            # Título do gráfico
-            titulo = self.titulo_entry.get()
-            if titulo:
-                self.ax.set_title(titulo)
-                
             # Adicionar caixa de texto com informações
-            texto_info = f"Equação: y = {equacao}\n"
+            texto_info = f"Equação: y = {self.equacao}\n"
             texto_info += '\n'.join([f"{p} = {v:.6f} ± {e:.6f}" for p, v, e in 
-                                   zip(self.parametros, resultado.beta, resultado.sd_beta)])
+                                zip(self.parametros, resultado.beta, resultado.sd_beta)])
             texto_info += f"\nChi² total: {chi2_total:.2f}\nChi² reduzido: {resultado.res_var:.2f}\nR²: {r2:.4f}"
             
             self.ax.text(
@@ -550,10 +715,9 @@ class AjusteCurvaGUI:
             )
             
             self.canvas.draw()
-            
+        
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro durante o ajuste: {str(e)}")
-            self.resultados_text.insert(tk.END, "Ocorreu um erro. Verifique os dados e tente novamente.\n")
+            messagebox.showerror("Erro", f"Erro ao mostrar resultados: {str(e)}")
             
 class ModeloODR:
     def __init__(self, funcao, derivadas):
