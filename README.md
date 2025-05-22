@@ -2,7 +2,6 @@
 Programa com GUI de Calculo de Incertezas e Ajuste de Curvas atraves de ODR
 
 - **Python 3.8 ou superior** (3.10 recomendado)
-- É recomendada a utilização de um ambiente virtual (`venv`) para evitar conflitos de dependências.
 
 ## Dependências Python
 
