@@ -3,10 +3,14 @@
 ## Formato do Arquivo de Dados
 O arquivo de dados deve ser um arquivo de texto (.txt) com valores separados por tabulação (\t) no seguinte formato:
 
-x   σx  y   σy\n
-1.0 0.1 2.0 0.2\n
-2.0 0.1 4.1 0.2\n
-... ... ... ...\n
+x   σx  y   σy
+
+1.0 0.1 2.0 0.2
+
+2.0 0.1 4.1 0.2
+
+... ... ... ...
+
 
 O que for escrito em x e y serviram de legenda no gráfico
 
