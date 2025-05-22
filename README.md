@@ -1,7 +1,7 @@
 # Instruções para Escrita de Funções de Ajuste
 
 ## Formato do Arquivo de Dados
-O arquivo de dados deve ser um arquivo de texto (.txt) com valores separados por tabulação (\t) no seguinte formato:
+O arquivo de dados deve ser um arquivo .csv ou .txt, com valores separados por tabulação (\t) no seguinte formato:
 
 x   σx  y   σy
 
