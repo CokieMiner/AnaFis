@@ -1,6 +1,22 @@
 # AnalFis
 Programa com GUI de Calculo de Incertezas e Ajuste de Curvas atraves de ODR
 
+- **Python 3.8 ou superior** (3.10 recomendado)
+- É recomendada a utilização de um ambiente virtual (`venv`) para evitar conflitos de dependências.
+
+## Dependências Python
+
+O programa necessita dos seguintes pacotes Python:
+- `numpy`
+- `sympy`
+- `scipy`
+- `matplotlib`
+- `tk` (Tkinter)
+
+> **Observação:**  
+> - O `tk`/`tkinter` já vem instalado por padrão em muitas distribuições do Python, mas em alguns sistemas Linux pode ser necessário instalar manualmente (`sudo apt install python3-tk`).
+> - No Windows, certifique-se de baixar o instalador oficial do Python em https://www.python.org/downloads/ e marcar a opção para incluir `tkinter`.
+
 # Instruções para Escrita de Funções de Ajuste
 
 ## Formato do Arquivo de Dados
