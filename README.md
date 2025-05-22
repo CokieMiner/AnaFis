@@ -1,4 +1,18 @@
-# Instruções para Escrita de Funções de Ajuste
+## Dependências Python
+
+O programa necessita dos seguintes pacotes Python:
+- `numpy`
+- `sympy`
+- `scipy`
+- `matplotlib`
+- `tk` (Tkinter)
+
+Installe usando no cmd:
+pip install numpy sympy scipy matplotlib
+
+> **Observação:**  
+> - O `tk`/`tkinter` já vem instalado por padrão em muitas distribuições do Python, mas em alguns sistemas Linux pode ser necessário instalar manualmente (`sudo apt install python3-tk`).
+> - No Windows, certifique-se de baixar o instalador oficial do Python em https://www.python.org/downloads/ e marcar a opção para incluir `tkinter`.
 
 ## Formato do Arquivo de Dados
 O arquivo de dados deve ser um arquivo .csv ou .txt, com valores separados por tabulação (\t) no seguinte formato:
@@ -10,7 +24,6 @@ x   σx  y   σy
 2.0 0.1 4.1 0.2
 
 ... ... ... ...
-
 
 O que for escrito em x e y serviram de legenda no gráfico
 
