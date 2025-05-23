@@ -1,29 +1,78 @@
+# Standard library imports
+import os
+import logging
+import re
+import json
+import threading
+from datetime import datetime
+from pathlib import Path
+from typing import List, Dict, Any, Tuple, Optional
+
+# Third-party imports
 import numpy as np
 import sympy as sp
+import pandas as pd
 from scipy.odr import ODR, Model, RealData
-import scipy.stats as stats
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# Tkinter imports
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, Toplevel
 from tkinter.scrolledtext import ScrolledText
-import math
-import os
-import threading
-from typing import List, Dict, Any, Tuple, Optional
-import re
-import json
-import logging
-from datetime import datetime
-import pandas as pd
-from pathlib import Path
-from numba import jit, prange
-from multiprocessing import Pool, cpu_count
-import concurrent.futures
-from dataclasses import dataclass
 
+class ErrorHandler:
+    def __init__(self, parent=None):
+        self.parent = parent
+        self.error_logger = ErrorLogger()
+        
+    def show_error(self, error, context=None):
+        error_info = self.error_logger.log_error(error, context)
+        messagebox.showerror(
+            parent=self.parent.winfo_toplevel() if self.parent else None,
+            title=error_info["error_type"],
+            message=error_info["message"] + "\n\n" + (error_info["solution"] or "")
+        )
 
+class ThemeManager:
+    def __init__(self):
+        self.light_colors = {
+            'bg': '#ffffff',
+            'fg': '#000000',
+            'select_bg': '#0078D7',
+            'select_fg': '#ffffff',
+            'frame_bg': '#f0f0f0',
+        }
+        
+        self.dark_colors = {
+            'bg': '#2d2d2d',
+            'fg': '#ffffff',
+            'select_bg': '#0078D7',
+            'select_fg': '#ffffff',
+            'frame_bg': '#363636',
+        }
+    
+    def apply_theme(self, dark_mode: bool, style: ttk.Style, root: tk.Tk):
+        colors = self.dark_colors if dark_mode else self.light_colors
+        
+        # Configure ttk styles
+        style.configure('TFrame', background=colors['bg'])
+        style.configure('TLabel', background=colors['bg'], foreground=colors['fg'])
+        style.configure('TButton', background=colors['bg'], foreground=colors['fg'])
+        style.configure('Treeview', background=colors['bg'], foreground=colors['fg'])
+        style.configure('TNotebook', background=colors['bg'])
+        style.configure('TNotebook.Tab', background=colors['bg'], foreground=colors['fg'])
+        
+        self._update_widget_colors(root, colors)
+    
+    def _update_widget_colors(self, widget, colors):
+        try:
+            widget.configure(bg=colors['bg'], fg=colors['fg'])
+        except tk.TclError:
+            pass  # Skip widgets that don't support color configuration
+            
+        for child in widget.winfo_children():
+            self._update_widget_colors(child, colors)
 
 class ErrorLogger:
     """Handles error logging and user-friendly error messages"""
@@ -350,8 +399,9 @@ class ProgressTracker:
             self.progress_var.set(min(100, current_iter * 10))
 
 class UncertaintyCalculationGUI:
-    def __init__(self, parent):
+    def __init__(self, parent, error_handler=None):
         self.parent = parent
+        self.error_handler = error_handler or ErrorHandler(parent)
         self.var_entries = []
         self.create_interface()
 
@@ -414,8 +464,8 @@ class UncertaintyCalculationGUI:
         self.results_text.delete(1.0, tk.END)
 
     def copy_formula(self):
-        self.root.clipboard_clear()
-        self.root.clipboard_append(self.results_text.get(1.0, tk.END))
+        self.parent.clipboard_clear()  # Use parent ao invés de root
+        self.parent.clipboard_append(self.results_text.get(1.0, tk.END))
 
     def update_interface(self):
         if self.mode_var.get() == "calculate":
@@ -461,7 +511,7 @@ class UncertaintyCalculationGUI:
                 uncertainty.grid(row=0, column=5)
                 self.var_entries.append((name, value, uncertainty))
         except ValueError:
-            messagebox.showerror(parent=self.parent.winfo_toplevel(), title="Error", message="Error message")
+            self.error_handler.show_error(e, "Context description")
 
     def calculate_or_generate(self):
         if self.mode_var.get() == "calculate":
@@ -505,7 +555,7 @@ class UncertaintyCalculationGUI:
             self.results_text.insert(tk.END, f"Total uncertainty: ±{total_uncertainty:.6f}\n")
             self.results_text.insert(tk.END, f"Final result: ({final_value:.6f} ± {total_uncertainty:.6f})")
         except Exception as e:
-            messagebox.showerror(parent=self.parent.winfo_toplevel(), title="Error", message="Error message")
+            self.error_handler.show_error(e, "Context description")
 
     def generate_uncertainty_formula(self):
         try:
@@ -527,13 +577,13 @@ class UncertaintyCalculationGUI:
             self.results_text.insert(tk.END, "Click 'Display LaTeX' to view the rendered formula.\n")
             self.formula_latex = formula_incerteza  # Store for visualization
         except Exception as e:
-            messagebox.showerror(parent=self.parent.winfo_toplevel(), title="Error", message="Error message")
+            self.error_handler.show_error(e, "Context description")
 
     def display_formula_latex(self, formula_latex):
         if not formula_latex or formula_latex.strip() == "":
             messagebox.showinfo("Attention", "Generate the formula first!")
             return
-        window = Toplevel(self.root)
+        window = Toplevel(self.parent)
         window.title("Rendered Formula (LaTeX)")
         fig, ax = plt.subplots(figsize=(7, 2))
         ax.axis('off')
@@ -546,6 +596,8 @@ class UncertaintyCalculationGUI:
 class CurveFittingGUI:
     def __init__(self, parent):
         self.parent = parent
+        self.error_handler = ErrorHandler(parent) 
+
         
         # Configure main layout with weights
         parent.columnconfigure(0, weight=2)  # Parameters column
@@ -566,16 +618,13 @@ class CurveFittingGUI:
         style.configure("Accent.TButton", font=('Helvetica', 10, 'bold'))
 
     def update_scales(self):
-        if self.x_scale.get() == "Log":
-            self.ax.set_xscale('log')
-        else:
-            self.ax.set_xscale('linear')
-            
-        if self.y_scale.get() == "Log":
-            self.ax.set_yscale('log')
-        else:
-            self.ax.set_yscale('linear')
-       
+        try:
+            self.ax.set_xscale('log' if self.x_scale.get() == "Log" else 'linear')
+            self.ax.set_yscale('log' if self.y_scale.get() == "Log" else 'linear')
+            self.canvas.draw()
+        except Exception as e:
+            self.error_handler.show_error(e, "Error updating scales")
+        
     def create_parameters_panel(self):
         # Left frame for parameters with padding and border
         left_frame = ttk.Frame(self.parent, padding="10")  # Changed from self.root to self.parent
@@ -733,7 +782,7 @@ class CurveFittingGUI:
                 )
                 
         except Exception as e:
-            messagebox.showerror(parent=self.parent.winfo_toplevel(), title="Error", message="Error message")
+            self.error_handler.show_error(e, "Error saving graph")
 
     def create_graph_panel(self):
         # Right frame for graph with padding
@@ -853,7 +902,7 @@ class CurveFittingGUI:
             # Reset progress and status
             self.progress_var.set(0)
             self.status_label.config(text="Starting fitting...")
-            self.root.update()
+            self.parent.update()
 
             # Clear previous results
             self.results_text.delete(1.0, tk.END)
@@ -892,11 +941,11 @@ class CurveFittingGUI:
             def run_odr():
                 try:
                     result = self.odr.run()
-                    self.root.after(0, lambda: self.show_results(result))
-                    self.root.after(0, lambda: self.status_label.config(text="Fitting completed!"))
+                    self.parent.after(0, lambda: self.show_results(result))
+                    self.parent.after(0, lambda: self.status_label.config(text="Fitting completed!"))
                 except Exception as e:
-                    self.root.after(0, lambda: messagebox.showerror("Error", f"Error during fitting: {str(e)}"))
-                    self.root.after(0, lambda: self.status_label.config(text="Error in fitting!"))
+                    self.parent.after(0, lambda: messagebox.showerror("Error", f"Error during fitting: {str(e)}"))
+                    self.parent.after(0, lambda: self.status_label.config(text="Error in fitting!"))
 
             def update_progress():
                 if hasattr(self, 'odr'):
@@ -916,18 +965,20 @@ class CurveFittingGUI:
             threading.Thread(target=run_odr, daemon=True).start()
 
         except Exception as e:
-            messagebox.showerror(parent=self.parent.winfo_toplevel(), title="Error", message="Error message")
-            self.results_text.insert(tk.END, "An error occurred. Please check the data and try again.\n")
+            self.error_handler.show_error(e, "Error during fitting")
     
    
     def show_results(self, result):
         try:
-            # Calculate statistics
+            # Limpe a figura antes de plotar novos dados
+            self.ax.clear()
+            
+            # Calcule os resultados
             y_pred = self.model(result.beta, self.x)
             chi2_total = np.sum(((self.y - y_pred) / self.sigma_y) ** 2)
             r2 = 1 - np.sum((self.y - y_pred) ** 2) / np.sum((self.y - np.mean(self.y)) ** 2)
             
-            # Show results
+            # Atualize o texto dos resultados
             self.results_text.delete(1.0, tk.END)
             self.results_text.insert(tk.END, "=== Results ===\n")
             for p, v, e in zip(self.parameters, result.beta, result.sd_beta):
@@ -936,17 +987,22 @@ class CurveFittingGUI:
             self.results_text.insert(tk.END, f"Reduced Chi²: {result.res_var:.2f}\n")
             self.results_text.insert(tk.END, f"R²: {r2:.4f}\n")
             
-            # Update graph
-            self.ax.clear()
-            self.ax.errorbar(self.x, self.y, xerr=self.sigma_x, yerr=self.sigma_y, fmt='o', label='Data')
+            # Plote os dados
+            self.plot_results(result, y_pred)
+            
+        except Exception as e:
+            self.error_handler.show_error(e, "Error showing results")
+
+    def plot_results(self, result, y_pred):
+        try:
+            self.ax.errorbar(self.x, self.y, xerr=self.sigma_x, yerr=self.sigma_y, 
+                            fmt='o', label='Data')
+            
             num_points = int(self.num_points_entry.get())
             x_fit = np.linspace(min(self.x), max(self.x), num_points)
             self.ax.plot(x_fit, self.model(result.beta, x_fit), 'r-', label='Fit')
             
-            # Update scales before plotting
-            self.update_scales()
-            
-            # Title and labels
+            # Configure o gráfico
             if self.title_entry.get():
                 self.ax.set_title(self.title_entry.get())
             self.ax.set_xlabel(self.header[0])
@@ -970,10 +1026,14 @@ class CurveFittingGUI:
                 va='bottom'
             )
             
+            self.add_info_box(result)
+        
+            # Atualize as escalas e o canvas
+            self.update_scales()
             self.canvas.draw()
         
         except Exception as e:
-            messagebox.showerror(parent=self.parent.winfo_toplevel(), title="Error", message="Error message")
+            self.error_handler.show_error(e, "Error plotting results")
             
 class ODRModel:
     def __init__(self, function, derivatives):
@@ -999,34 +1059,42 @@ class ModernGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         
+        # Set window properties
         self.title("Physics Data Analysis")
         self.geometry("1200x800")
         
-        # Initialize components
-        self.error_logger = ErrorLogger()
+        # Initialize managers
+        self.error_handler = ErrorHandler(self)
+        self.theme_manager = ThemeManager()
         
-        # Initialize dark mode variable
-        self.dark_mode = tk.BooleanVar()
-        self.dark_mode.set(False)  # Start in light mode
+        # Initialize variables
+        self.dark_mode = tk.BooleanVar(value=False)
+        self.recent_files = []
         
-        # Create styles
-        self.create_styles()
-        
-        # Create the main menu
+        # Create the UI
+        self.create_style()
+        self.create_main_frame()
         self.create_menu()
+        self.create_tabs()
         
-        # Create main frame
+        # Apply initial theme
+        self.theme_manager.apply_theme(False, self.style, self)
+    
+    def create_style(self):
+        """Create and initialize style"""
+        self.style = ttk.Style()
+        
+    def create_main_frame(self):
+        """Create the main application frame"""
         self.main_frame = ttk.Frame(self, padding="20")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.main_frame)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        # Add tabs
-        self.create_tabs()
-        
+
     def create_menu(self):
+        """Create the application menu"""
         menubar = tk.Menu(self)
         self.config(menu=menubar)
         
@@ -1043,11 +1111,16 @@ class ModernGUI(tk.Tk):
         view_menu.add_checkbutton(
             label="Dark Mode", 
             variable=self.dark_mode,
-            command=self.toggle_theme
+            command=lambda: self.theme_manager.apply_theme(
+                self.dark_mode.get(), 
+                self.style, 
+                self
+            )
         )
-    
+
     def create_tabs(self):
-        # Create frames for each tab
+        """Create and initialize the application tabs"""
+        # Create frames for tabs
         self.curve_fitting_frame = ttk.Frame(self.notebook)
         self.uncertainty_frame = ttk.Frame(self.notebook)
         
@@ -1061,15 +1134,20 @@ class ModernGUI(tk.Tk):
         self.notebook.add(self.curve_fitting_frame, text="Curve Fitting")
         self.notebook.add(self.uncertainty_frame, text="Uncertainty Calculation")
         
-        # Initialize the content for each tab
+        # Initialize tab content
         self.init_curve_fitting()
         self.init_uncertainty_calc()
-    
+
     def init_curve_fitting(self):
+        """Initialize the curve fitting tab"""
         self.curve_fitting = CurveFittingGUI(self.curve_fitting_frame)
     
     def init_uncertainty_calc(self):
-        self.uncertainty_calc = UncertaintyCalculationGUI(self.uncertainty_frame)
+        """Initialize the uncertainty calculation tab"""
+        self.uncertainty_calc = UncertaintyCalculationGUI(
+            self.uncertainty_frame, 
+            self.error_handler
+        )
     
     def new_analysis(self):
         selected = self.notebook.select()
@@ -1079,62 +1157,7 @@ class ModernGUI(tk.Tk):
             self.init_curve_fitting()
         else:  # Uncertainty Calculation tab
             self.init_uncertainty_calc()
-               
-    def create_styles(self):
-        """Create and configure styles for themes"""
-        self.style = ttk.Style()
-        
-        # Light theme colors
-        self.light_colors = {
-            'bg': '#ffffff',
-            'fg': '#000000',
-            'select_bg': '#0078D7',
-            'select_fg': '#ffffff',
-            'frame_bg': '#f0f0f0',
-        }
-        
-        # Dark theme colors
-        self.dark_colors = {
-            'bg': '#2d2d2d',
-            'fg': '#ffffff',
-            'select_bg': '#0078D7',
-            'select_fg': '#ffffff',
-            'frame_bg': '#363636',
-        }
-        
-        # Configure initial theme
-        self.update_theme()
-        
-    def toggle_theme(self):
-        """Toggle between light and dark theme"""
-        self.update_theme()
-        
-    def update_theme(self):
-        """Update the application theme"""
-        colors = self.dark_colors if self.dark_mode.get() else self.light_colors
-        
-        # Configure ttk styles
-        self.style.configure('TFrame', background=colors['bg'])
-        self.style.configure('TLabel', background=colors['bg'], foreground=colors['fg'])
-        self.style.configure('TButton', background=colors['bg'], foreground=colors['fg'])
-        self.style.configure('Treeview', background=colors['bg'], foreground=colors['fg'])
-        self.style.configure('TNotebook', background=colors['bg'])
-        self.style.configure('TNotebook.Tab', background=colors['bg'], foreground=colors['fg'])
-        
-        # Update all windows and frames
-        self.update_widget_colors(self, colors)
-        
-    def update_widget_colors(self, widget, colors):
-        """Recursively update colors for all widgets"""
-        try:
-            widget.configure(bg=colors['bg'], fg=colors['fg'])
-        except:
-            pass
-            
-        for child in widget.winfo_children():
-            self.update_widget_colors(child, colors)
-            
-           
+
     def open_file(self, filepath=None):
         """Open a file with preview"""
         try:
