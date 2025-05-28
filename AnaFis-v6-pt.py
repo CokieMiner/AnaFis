@@ -190,7 +190,7 @@ class CalculoIncertezasGUI:
             # Limpar campos existentes
             for widget in self.campos_frame.winfo_children():
                 widget.destroy()
-            # Criar novos campos
+            # Criar campos
             self.var_entries = []
             for i in range(num):
                 frame = ttk.Frame(self.campos_frame)
