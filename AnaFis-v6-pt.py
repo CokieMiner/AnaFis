@@ -102,7 +102,7 @@ class CalculoIncertezasGUI:
 
     def criar_interface(self):
         main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.grid(row=0, column=0, sticky="nsew")
 
         # Modo de operação
         ttk.Label(main_frame, text="Modo de Operação:").grid(row=0, column=0, pady=5, sticky="w")
@@ -241,7 +241,7 @@ class CalculoIncertezasGUI:
             for var, (val, sigma) in variaveis.items():
                 derivada = sp.diff(expr, sp.Symbol(var))
                 derivada_num = derivada.subs({sp.Symbol(k): valor for k, (valor, _) in variaveis.items()})
-                derivada_num = float(derivada_num.evalf())
+                derivada_num = float(sp.N(derivada_num))
                 incerteza_total += (derivada_num * sigma) ** 2
             incerteza_total = math.sqrt(incerteza_total)
             # Mostrar resultados
@@ -643,7 +643,7 @@ class AjusteCurvaGUI:
                     self.root.after(0, lambda: self.status_label.config(text="Erro no ajuste!"))
 
             def update_progress():
-                if hasattr(self, 'odr'):
+                if hasattr(self, 'odr') and self.odr.iwork is not None:
                     try:
                         current_iter = self.odr.iwork[0]
                         self.progress_var.set(min(100, current_iter * 10))
@@ -652,6 +652,8 @@ class AjusteCurvaGUI:
                             self.root.after(100, update_progress)
                     except:
                         pass
+                else:
+                    self.root.after(100, update_progress)
 
             # Start progress updates
             self.root.after(100, update_progress)
