@@ -12,21 +12,21 @@ class ODRModel(Protocol):
     def fjb(self, beta: FloatArray, x: FloatArray) -> List[FloatArray]: ...
     def fdb(self, beta: FloatArray, x: FloatArray) -> FloatArray: ...
 
-class ModeloODR:
+class ODRModelImplementation:
     """ODR model implementation"""
-    def __init__(self, funcao: Callable[[FloatArray, FloatArray], FloatArray],
-                derivadas: List[Callable[[FloatArray, FloatArray], FloatArray]]) -> None:
-        self.funcao = funcao
-        self.derivadas = derivadas
+    def __init__(self, function: Callable[[FloatArray, FloatArray], FloatArray],
+                derivatives: List[Callable[[FloatArray, FloatArray], FloatArray]]) -> None:
+        self.function = function
+        self.derivatives = derivatives
         
-    def __call__(self, parametros: FloatArray, x: FloatArray) -> FloatArray:
-        return self.funcao(parametros, x)
+    def __call__(self, parameters: FloatArray, x: FloatArray) -> FloatArray:
+        return self.function(parameters, x)
 
-    def fjb(self, parametros: FloatArray, x: FloatArray) -> List[FloatArray]:
+    def fjb(self, parameters: FloatArray, x: FloatArray) -> List[FloatArray]:
         """Returns derivatives with respect to parameters"""
-        return [d(parametros, x) for d in self.derivadas]
+        return [d(parameters, x) for d in self.derivatives]
 
-    def fdb(self, parametros: FloatArray, x: FloatArray) -> FloatArray:
+    def fdb(self, parameters: FloatArray, x: FloatArray) -> FloatArray:
         """Returns derivative with respect to independent variable"""
         return np.zeros_like(x)
 
@@ -43,5 +43,5 @@ class ProgressTracker:
             current_iter = int(self.odr.iwork[0])
             if current_iter != self.last_iter:
                 self.last_iter = current_iter
-                self.status_label.configure(text=f"Iteração: {current_iter}")
+                self.status_label.configure(text=f"Iteration: {current_iter}")
                 self.progress_var.set(min(100, current_iter * 10))

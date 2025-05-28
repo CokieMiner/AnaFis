@@ -11,7 +11,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, Toplevel
 from tkinter.scrolledtext import ScrolledText
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from models import ModeloODR
+from models import ODRModelImplementation
 from scipy.odr import ODR, RealData, Model
 
 
@@ -28,10 +28,52 @@ class BaseGUI:
         raise NotImplementedError
 
 class AjusteCurvaGUI:
-    def __init__(self, root):
+    def __init__(self, root, language):
         self.root = root
-        self.root.title("Ajuste de Curvas")
-        
+        self.language = language
+        self.translations = {
+            'pt': {
+                'title': 'Ajuste de Curvas',
+                'data_input': 'Dados de Entrada',
+                'file': 'Arquivo de Dados:',
+                'browse': 'Procurar',
+                'equation': 'Equação:',
+                'max_iterations': 'Máx. iterações:',
+                'num_points': 'Pontos do ajuste:',
+                'graph_settings': 'Configurações do Gráfico',
+                'title': 'Título:',
+                'x_scale': 'Escala X:',
+                'y_scale': 'Escala Y:',
+                'initial_estimates': 'Estimativas Iniciais',
+                'progress': 'Progresso',
+                'results': 'Resultados',
+                'perform_fit': 'Realizar Ajuste',
+                'save_graph': 'Salvar Gráfico'
+            },
+            'en': {
+                'title': 'Curve Fitting',
+                'data_input': 'Data Input',
+                'file': 'Data File:',
+                'browse': 'Browse',
+                'equation': 'Equation:',
+                'max_iterations': 'Max Iterations:',
+                'num_points': 'Fit Points:',
+                'graph_settings': 'Graph Settings',
+                'title': 'Title:',
+                'x_scale': 'X Scale:',
+                'y_scale': 'Y Scale:',
+                'initial_estimates': 'Initial Estimates',
+                'progress': 'Progress',
+                'results': 'Results',
+                'perform_fit': 'Perform Fit',
+                'save_graph': 'Save Graph'
+            }
+        }
+        self.root.title(self.translations[self.language]['title'])
+        self.setup_ui()
+
+    def setup_ui(self) -> None:
+        """Set up the user interface"""
         # Definir tamanho inicial da janela
         self.root.geometry("1200x800")  # Tamanho mais adequado
         
@@ -70,20 +112,20 @@ class AjusteCurvaGUI:
         left_frame.grid(row=0, column=0, sticky="nsew")
         
         # Frame para dados de entrada
-        dados_frame = ttk.LabelFrame(left_frame, text="Dados de Entrada", padding="5")
+        dados_frame = ttk.LabelFrame(left_frame, text=self.translations[self.language]['data_input'], padding="5")
         dados_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
         # Arquivo de dados
-        ttk.Label(dados_frame, text="Arquivo de Dados:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(dados_frame, text=self.translations[self.language]['file']).grid(row=0, column=0, sticky="w", pady=5)
         self.arquivo_entry = ttk.Entry(dados_frame, width=40)
         self.arquivo_entry.grid(row=1, column=0, sticky="ew", padx=5)
-        ttk.Button(dados_frame, text="Procurar", command=self.selecionar_arquivo).grid(row=1, column=1)
+        ttk.Button(dados_frame, text=self.translations[self.language]['browse'], command=self.selecionar_arquivo).grid(row=1, column=1)
         
         # Equação e parâmetros do ajuste
         ajuste_frame = ttk.LabelFrame(left_frame, text="Parâmetros do Ajuste", padding="5")
         ajuste_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
-        ttk.Label(ajuste_frame, text="Equação:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(ajuste_frame, text=self.translations[self.language]['equation']).grid(row=0, column=0, sticky="w", pady=5)
         self.equacao_entry = ttk.Entry(ajuste_frame, width=40)
         self.equacao_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
         
@@ -91,21 +133,21 @@ class AjusteCurvaGUI:
         config_frame = ttk.Frame(ajuste_frame)
         config_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
         
-        ttk.Label(config_frame, text="Máx. iterações:").grid(row=0, column=0, sticky="w")
+        ttk.Label(config_frame, text=self.translations[self.language]['max_iterations']).grid(row=0, column=0, sticky="w")
         self.max_iter_entry = ttk.Entry(config_frame, width=8)
         self.max_iter_entry.insert(0, "1000")
         self.max_iter_entry.grid(row=0, column=1, padx=5)
         
-        ttk.Label(config_frame, text="Pontos do ajuste:").grid(row=0, column=2, sticky="w", padx=(10,0))
+        ttk.Label(config_frame, text=self.translations[self.language]['num_points']).grid(row=0, column=2, sticky="w", padx=(10,0))
         self.num_points_entry = ttk.Entry(config_frame, width=8)
         self.num_points_entry.insert(0, "1000")
         self.num_points_entry.grid(row=0, column=3, padx=5)
         
         # Frame para configurações do gráfico
-        grafico_frame = ttk.LabelFrame(left_frame, text="Configurações do Gráfico", padding="5")
+        grafico_frame = ttk.LabelFrame(left_frame, text=self.translations[self.language]['graph_settings'], padding="5")
         grafico_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
-        ttk.Label(grafico_frame, text="Título:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(grafico_frame, text=self.translations[self.language]['title']).grid(row=0, column=0, sticky="w", pady=5)
         self.titulo_entry = ttk.Entry(grafico_frame, width=40)
         self.titulo_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
         
@@ -113,22 +155,22 @@ class AjusteCurvaGUI:
         scale_frame = ttk.Frame(grafico_frame)
         scale_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
         
-        ttk.Label(scale_frame, text="Escala X:").grid(row=0, column=0, padx=5)
+        ttk.Label(scale_frame, text=self.translations[self.language]['x_scale']).grid(row=0, column=0, padx=5)
         self.x_scale = ttk.Combobox(scale_frame, values=["Linear", "Log"], state="readonly", width=8)
         self.x_scale.set("Linear")
         self.x_scale.grid(row=0, column=1, padx=5)
         
-        ttk.Label(scale_frame, text="Escala Y:").grid(row=0, column=2, padx=(10,5))
+        ttk.Label(scale_frame, text=self.translations[self.language]['y_scale']).grid(row=0, column=2, padx=(10,5))
         self.y_scale = ttk.Combobox(scale_frame, values=["Linear", "Log"], state="readonly", width=8)
         self.y_scale.set("Linear")
         self.y_scale.grid(row=0, column=3, padx=5)
         
         # Frame para estimativas iniciais
-        self.estimativas_frame = ttk.LabelFrame(left_frame, text="Estimativas Iniciais", padding="5")
+        self.estimativas_frame = ttk.LabelFrame(left_frame, text=self.translations[self.language]['initial_estimates'], padding="5")
         self.estimativas_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
         # Frame para progresso
-        progress_frame = ttk.LabelFrame(left_frame, text="Progresso", padding="5")
+        progress_frame = ttk.LabelFrame(left_frame, text=self.translations[self.language]['progress'], padding="5")
         progress_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
         self.progress_var = tk.IntVar()
@@ -143,7 +185,7 @@ class AjusteCurvaGUI:
         self.status_label.grid(row=1, column=0, sticky="w", padx=5)
         
         # Frame para resultados
-        resultados_frame = ttk.LabelFrame(left_frame, text="Resultados", padding="5")
+        resultados_frame = ttk.LabelFrame(left_frame, text=self.translations[self.language]['results'], padding="5")
         resultados_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(0,10))
         
         self.resultados_text = ScrolledText(resultados_frame, height=8, width=40)
@@ -155,14 +197,14 @@ class AjusteCurvaGUI:
         
         ttk.Button(
             botoes_frame, 
-            text="Realizar Ajuste",
+            text=self.translations[self.language]['perform_fit'],
             style="Accent.TButton",
             command=self.realizar_ajuste
         ).grid(row=0, column=0, pady=5, padx=5, sticky="ew")
         
         ttk.Button(
             botoes_frame,
-            text="Salvar Gráfico",
+            text=self.translations[self.language]['save_graph'],
             command=self.salvar_grafico
         ).grid(row=0, column=1, pady=5, padx=5, sticky="ew")
         
@@ -247,6 +289,13 @@ class AjusteCurvaGUI:
             self.arquivo_entry.insert(0, filename)
             
     def atualizar_estimativas_frame(self):
+        error_messages = {
+            'invalid_equation': {
+                'pt': "Erro ao processar equação: {error}",
+                'en': "Error processing equation: {error}"
+            }
+        }
+
         # Limpar frame atual
         for widget in self.estimativas_frame.winfo_children():
             widget.destroy()
@@ -270,12 +319,30 @@ class AjusteCurvaGUI:
                 setattr(self, f"estimate_{param}", entry)
                 
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao processar equação: {str(e)}")
+            messagebox.showerror(
+                self.translations[self.language]['title'],
+                error_messages['invalid_equation'][self.language].format(error=str(e))
+            )
             
     def ler_arquivo(self, nome_arquivo):
+        error_messages = {
+            'file_not_found': {
+                'pt': "O arquivo '{file}' não foi encontrado.",
+                'en': "The file '{file}' was not found."
+            },
+            'processing_error': {
+                'pt': "Erro ao processar o arquivo: {error}",
+                'en': "Error processing the file: {error}"
+            }
+        }
+
         if not os.path.isfile(nome_arquivo):
-            messagebox.showerror("Erro ao ler arquivo", f"O arquivo '{nome_arquivo}' não foi encontrado.")
-            raise FileNotFoundError(f"O arquivo '{nome_arquivo}' não foi encontrado.")
+            messagebox.showerror(
+                self.translations[self.language]['title'],
+                error_messages['file_not_found'][self.language].format(file=nome_arquivo)
+            )
+            raise FileNotFoundError(error_messages['file_not_found'][self.language].format(file=nome_arquivo))
+
         try:
             # Detecta o tipo de separador pelo sufixo do arquivo
             _, ext = os.path.splitext(nome_arquivo)
@@ -307,7 +374,10 @@ class AjusteCurvaGUI:
             sigma_y = dados[:, 3].astype(float)
             return x, sigma_x, y, sigma_y
         except Exception as e:
-            messagebox.showerror("Erro ao ler arquivo", f"Erro ao processar o arquivo:\n{str(e)}")
+            messagebox.showerror(
+                self.translations[self.language]['title'],
+                error_messages['processing_error'][self.language].format(error=str(e))
+            )
             raise
 
     
@@ -363,7 +433,7 @@ class AjusteCurvaGUI:
                 
             # Create model
             self.modelo, derivadas = self.criar_modelo(equacao, self.parametros)
-            modelo_odr = Model(ModeloODR(self.modelo, derivadas))
+            modelo_odr = Model(ODRModelImplementation(self.modelo, derivadas))
             self.equacao = equacao
 
             # Execute ODR

@@ -3,7 +3,7 @@
 A Python package for physics data analysis, curve fitting and uncertainty calculations.
 """
 
-from .models import ODRModel, ModeloODR, ProgressTracker
+from .models import ODRModel, ODRModelImplementation, ProgressTracker
 from .regression import RegressionAnalyzer
 from .uncertainties import UncertaintyCalculator
 from .gui import AjusteCurvaGUI, CalculoIncertezasGUI
@@ -13,7 +13,7 @@ __version__ = "7.0.0"
 __author__ = "Pedro"
 
 __all__ = [
-    "ODRModel", "ModeloODR", "ProgressTracker",
+    "ODRModel", "ODRModelImplementation", "ProgressTracker",
     "RegressionAnalyzer", "UncertaintyCalculator",
     "AjusteCurvaGUI", "CalculoIncertezasGUI",
     "AplicativoUnificado"
