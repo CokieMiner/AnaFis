@@ -6,7 +6,7 @@ from scipy.odr import ODR, Model, RealData
 import os
 from typing import Tuple, List, Callable
 
-from models import ModeloODR, FloatArray
+from models import FloatArray
 
 class RegressionAnalyzer:
     """Handles curve fitting and regression analysis"""

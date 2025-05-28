@@ -11,3 +11,10 @@ from .main import AplicativoUnificado
 
 __version__ = "7.0.0"
 __author__ = "Pedro"
+
+__all__ = [
+    "ODRModel", "ModeloODR", "ProgressTracker",
+    "RegressionAnalyzer", "UncertaintyCalculator",
+    "AjusteCurvaGUI", "CalculoIncertezasGUI",
+    "AplicativoUnificado"
+]

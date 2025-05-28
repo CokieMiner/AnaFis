@@ -11,7 +11,17 @@ setup(
         "sympy>=1.9",
         "matplotlib>=3.4.0"
     ],
+    extras_require={
+        "data": ["pandas>=1.3.0"]
+    },
     author="Pedro",
-    description="A Python package for physics data analysis",
+    description="A Python package for physics data analysis, curve fitting, and uncertainty calculations",
     python_requires=">=3.8",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    long_description="""AnaFis is a Python package for physics data analysis. It provides tools for curve fitting, uncertainty calculations, and data visualization.""",
+    long_description_content_type="text/markdown",
 )

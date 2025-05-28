@@ -1,8 +1,9 @@
-"""AnaFis - Análise de Dados Físicos main application"""
+"""AnaFis main application module"""
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
-from gui import AjusteCurvaGUI, CalculoIncertezasGUI
+
+from .gui import AjusteCurvaGUI, CalculoIncertezasGUI
 
 class AplicativoUnificado:
     """Main application class"""
@@ -81,7 +82,3 @@ class AplicativoUnificado:
     def run(self) -> None:
         """Start the application"""
         self.root.mainloop()
-
-if __name__ == "__main__":
-    app = AplicativoUnificado()
-    app.run()

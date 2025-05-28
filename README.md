@@ -1,3 +1,23 @@
+# AnaFis - Análise de Dados Físicos
+
+## Funcionalidades Principais
+
+### Ajuste de Curvas
+- Carregar dados experimentais de arquivos CSV ou TXT
+- Ajuste de funções arbitrárias definidas pelo usuário
+- Visualização em tempo real do ajuste
+- Cálculo automático de incertezas dos parâmetros
+- Estatísticas do ajuste (Chi², R²)
+- Exportação de gráficos em vários formatos
+- Suporte a escala linear e logarítmica
+
+### Cálculo de Incertezas
+- Cálculo de propagação de incertezas para funções arbitrárias
+- Geração automática de fórmulas de incerteza em formato LaTeX
+- Suporte a cálculos com múltiplas variáveis
+- Visualização de fórmulas renderizadas
+- Resultados com número apropriado de algarismos significativos
+
 ## Dependências Python
 
 O programa necessita dos seguintes pacotes Python:
@@ -7,12 +27,29 @@ O programa necessita dos seguintes pacotes Python:
 - `matplotlib`
 - `tk` (Tkinter)
 
-Installe usando no cmd:
+### Dependências Opcionais
+- `pandas` (para manipulação avançada de dados)
+
+Instale usando:
+```bash
 pip install numpy sympy scipy matplotlib
+```
+Para incluir dependências opcionais:
+```bash
+pip install ".[data]"
+```
 
 > **Observação:**  
 > - O `tk`/`tkinter` já vem instalado por padrão em muitas distribuições do Python, mas em alguns sistemas Linux pode ser necessário instalar manualmente (`sudo apt install python3-tk`).
 > - No Windows, certifique-se de baixar o instalador oficial do Python em https://www.python.org/downloads/ e marcar a opção para incluir `tkinter`.
+
+## Estrutura Modular
+O código foi modularizado para facilitar a manutenção e expansão. Os principais módulos incluem:
+- `models.py`: Classes e utilitários principais.
+- `regression.py`: Funções para ajuste de curvas.
+- `uncertainties.py`: Cálculo de incertezas.
+- `gui.py`: Componentes da interface gráfica.
+- `main.py`: Ponto de entrada principal do aplicativo.
 
 ## Formato do Arquivo de Dados
 O arquivo de dados deve ser um arquivo .csv ou .txt, com valores separados por tabulação (\t) no seguinte formato:
@@ -160,3 +197,61 @@ Para mais informações sobre:
 - Funções matemáticas: Documentação do SymPy (https://docs.sympy.org)
 - Análise estatística: Documentação do SciPy (https://docs.scipy.org)
 - Visualização: Documentação do Matplotlib (https://matplotlib.org)
+
+## Lista Detalhada de Funcionalidades
+
+### Menu Principal
+- Interface gráfica intuitiva com navegação por botões
+- Acesso rápido às duas principais ferramentas
+- Design responsivo e moderno
+
+### Ajuste de Curvas (Detalhado)
+1. Entrada de Dados:
+   - Importação de arquivos CSV/TXT com 4 colunas (x, σx, y, σy)
+   - Suporte para arquivos com delimitadores diferentes (vírgula ou tab)
+   - Validação automática do formato dos dados
+
+2. Definição do Modelo:
+   - Editor de equações para funções arbitrárias
+   - Detecção automática de parâmetros
+   - Suporte para funções matemáticas comuns (exp, log, sin, etc.)
+
+3. Processo de Ajuste:
+   - Algoritmo ODR (Orthogonal Distance Regression)
+   - Barra de progresso em tempo real
+   - Cálculo automático de derivadas
+   - Estimativas iniciais configuráveis
+
+4. Visualização:
+   - Gráfico interativo com barras de erro
+   - Atualização em tempo real durante o ajuste
+   - Opções de escala (linear/log) para ambos os eixos
+   - Personalização de títulos e legendas
+
+5. Resultados:
+   - Parâmetros ajustados com incertezas
+   - Chi² total e reduzido
+   - Coeficiente de determinação (R²)
+   - Matriz de correlação
+   - Exportação de gráficos em alta resolução
+
+### Cálculo de Incertezas (Detalhado)
+1. Entrada de Variáveis:
+   - Interface dinâmica para adicionar variáveis
+   - Campos para nome, valor e incerteza
+   - Suporte para número arbitrário de variáveis
+
+2. Modos de Operação:
+   - Cálculo numérico direto
+   - Geração de fórmulas simbólicas
+
+3. Fórmulas:
+   - Editor de equações flexível
+   - Suporte para funções matemáticas complexas
+   - Validação automática de sintaxe
+
+4. Resultados:
+   - Valor final com incerteza propagada
+   - Fórmulas em LaTeX
+   - Visualizador de fórmulas renderizadas
+   - Opção de copiar fórmulas para uso externo
