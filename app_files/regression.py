@@ -1,12 +1,13 @@
-"""Regression analysis module for AnaFis"""
-from __future__ import annotations
+from typing import Tuple, List, Callable
 import numpy as np
 import sympy as sp
-from scipy.odr import ODR, Model, RealData
 import os
-from typing import Tuple, List, Callable
+import json
+import pandas as pd
+from scipy.odr import ODR, Model, RealData
+from .models import FloatArray
 
-from models import FloatArray
+
 
 class RegressionAnalyzer:
     """Handles curve fitting and regression analysis"""
@@ -19,7 +20,7 @@ class RegressionAnalyzer:
         self.parameters: List[sp.Symbol] = []
         self.header: List[str] = []
         self.language = 'en'  # Default language is English
-        
+
     def read_file(self, file_name: str) -> Tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
         """Read data from file"""
         error_messages = {
@@ -72,7 +73,6 @@ class RegressionAnalyzer:
             sigma_y = data[:, 3].astype(float)
 
         elif ext == ".json":
-            import json
             with open(file_name, 'r') as f:
                 json_data = json.load(f)
 
@@ -85,7 +85,6 @@ class RegressionAnalyzer:
                 raise ValueError(f"Missing key in JSON file: {e}")
 
         elif ext in [".xls", ".xlsx"]:
-            import pandas as pd
             df = pd.read_excel(file_name)
 
             try:
@@ -99,46 +98,53 @@ class RegressionAnalyzer:
         else:
             raise ValueError(error_messages['unsupported_format'][self.language].format(ext=ext))
 
+        # Check for empty arrays
+        if any(arr.size == 0 for arr in [x, sigma_x, y, sigma_y]):
+            raise ValueError(error_messages['empty_file'][self.language])
+
         return x, sigma_x, y, sigma_y
 
     def create_model(self, equation: str, parameters: List[sp.Symbol]) -> Tuple[Callable, List[Callable]]:
-        """Create ODR model from equation"""
+        """Create ODR model from equation and assign it to self.model automatically."""
         x = sp.Symbol('x')
         expr = sp.sympify(equation)
-        
         derivatives = [sp.diff(expr, p) for p in parameters]
-        
         numeric_model = sp.lambdify((parameters, x), expr, 'numpy')
         numeric_derivatives = [sp.lambdify((parameters, x), d, 'numpy') for d in derivatives]
-        
+        self.model = numeric_model  # Automatically assign to self.model
         return numeric_model, numeric_derivatives
 
     def perform_fit(self, initial_guess: List[float], max_iter: int = 1000):
         """Perform curve fitting"""
-        if any(v is None for v in [self.x, self.y, self.sigma_x, self.sigma_y, self.model]):
-            raise ValueError("Data or model not defined")
-            
-        assert self.model is not None
+        if any(v is None for v in [self.x, self.y, self.sigma_x, self.sigma_y]):
+            raise ValueError("Data not defined")
+        if self.model is None:
+            raise ValueError("Model function is not defined. Please call create_model and assign the result to self.model before fitting.")
         assert self.x is not None
         assert self.y is not None
         assert self.sigma_x is not None
         assert self.sigma_y is not None
-            
-        odr_model = Model(self.model)
+        # ODR expects the model function to have signature f(beta, x)
+        assert callable(self.model), "Model function must be callable"
+        def odr_func(beta, x):
+            if not callable(self.model):
+                raise ValueError("Model function is not defined or not callable")
+            return self.model(beta, x)
+        odr_model = Model(odr_func)
         data = RealData(self.x, self.y, sx=self.sigma_x, sy=self.sigma_y)
         odr = ODR(data, odr_model, beta0=initial_guess, maxit=max_iter)
-        
         return odr.run()
 
     def calculate_statistics(self, result, y_pred: FloatArray) -> Tuple[float, float]:
         """Calculate goodness of fit statistics"""
         if any(v is None for v in [self.y, self.sigma_y]):
             raise ValueError("Data not defined")
-            
         assert self.y is not None
         assert self.sigma_y is not None
-            
         chi2_total = np.sum(((self.y - y_pred) / self.sigma_y) ** 2)
-        r2 = 1 - np.sum((self.y - y_pred) ** 2) / np.sum((self.y - np.mean(self.y)) ** 2)
-        
+        denom = np.sum((self.y - np.mean(self.y)) ** 2)
+        if denom == 0:
+            r2 = float('nan')
+        else:
+            r2 = 1 - np.sum((self.y - y_pred) ** 2) / denom
         return chi2_total, r2

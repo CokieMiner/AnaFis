@@ -1,8 +1,6 @@
-"""Models and utility classes for AnaFis"""
-from __future__ import annotations
+from typing import Protocol, List, Callable
 import numpy as np
 import numpy.typing as npt
-from typing import Protocol, List, Callable
 
 FloatArray = npt.NDArray[np.float64]
 
