@@ -1,12 +1,12 @@
-from typing import Tuple, List, Callable
 import numpy as np
 import sympy as sp
 import os
 import json
 import pandas as pd
+
 from scipy.odr import ODR, Model, RealData
 from .models import FloatArray
-
+from typing import Tuple, List, Callable
 
 
 class RegressionAnalyzer:

@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from app_files.utils.type_aliases import FloatArray
-from app_files.constants import TRANSLATIONS
+from app_files.utils.constants import TRANSLATIONS
 
 # Constants
 FONT_FAMILY = 'Courier New'

@@ -2,10 +2,10 @@
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
-from app_files.gui.ajuste_curva_gui import AjusteCurvaGUI
-from app_files.gui.calculo_incertezas_gui import CalculoIncertezasGUI
-from app_files.constants import TRANSLATIONS
-from typing import Union
+from app_files.gui.ajuste_curva.main_gui import AjusteCurvaGUI
+from app_files.gui.incerteza.calculo_incertezas_gui import CalculoIncertezasGUI
+from app_files.utils.constants import TRANSLATIONS
+
 
 class AplicativoUnificado:
     """Main application class"""
