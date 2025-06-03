@@ -2,14 +2,16 @@
 
 ## Installation
 
-AnaFis requires Python 3.8 or newer. It is recommended to use a virtual environment.
+AnaFis requires Python 3.8 or newer.
 
 To install all required dependencies, run:
+
 ```bash
 pip install numpy sympy scipy matplotlib pandas
 ```
 
 ## Main Features
+
 - Curve fitting with user-defined functions
 - Uncertainty propagation for arbitrary formulas
 - Real-time fit visualization
