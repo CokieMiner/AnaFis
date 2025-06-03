@@ -102,6 +102,11 @@ TRANSLATIONS = {
         'axis_labels': 'Rótulos dos Eixos',
         'x_label': 'Rótulo X',
         'y_label': 'Rótulo Y',
+        'data_preview': 'Pré-visualização dos Dados',
+        'export_results': 'Exportar Resultados',
+        'residuals': 'Resíduos',
+        'preset_models': 'Modelos Pré-definidos',
+        'fit_history': 'Histórico de Ajustes'
     },
     'en': {
         # Application titles
@@ -206,5 +211,10 @@ TRANSLATIONS = {
         'axis_labels': 'Axis Labels',
         'x_label': 'X Label',
         'y_label': 'Y Label',
+        'data_preview': 'Data Preview',
+        'export_results': 'Export Results',
+        'residuals': 'Residuals',
+        'preset_models': 'Preset Models',
+        'fit_history': 'Fit History'
     }
 }

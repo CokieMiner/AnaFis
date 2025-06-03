@@ -1,2 +1,5 @@
 *.log
 *.pyc
+*.json
+*.xlsx
+*.png
