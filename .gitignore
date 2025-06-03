@@ -1,7 +1,2 @@
-AnaFis.log
-modular/__pycache__/__init__.cpython-313.pyc
-modular/__pycache__/gui.cpython-313.pyc
-modular/__pycache__/main.cpython-313.pyc
-modular/__pycache__/models.cpython-313.pyc
-modular/__pycache__/regression.cpython-313.pyc
-modular/__pycache__/uncertainties.cpython-313.pyc
+*.log
+*.pyc
