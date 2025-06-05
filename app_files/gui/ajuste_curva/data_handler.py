@@ -4,7 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 from tkinter import messagebox
-from typing import Tuple, List, Any, Dict
+from typing import Tuple, List, Any
 
 def read_file(file_name: str, language: str = 'pt') -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
     """Read data from file

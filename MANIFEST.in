@@ -1,0 +1,9 @@
+include README.md
+include README_PT.md
+include LICENSE
+include requirements.txt
+recursive-include app_files *.py
+recursive-include app_files *.json
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude *.log
