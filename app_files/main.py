@@ -4,6 +4,8 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import logging
+import os
+import sys
 
 # Import the version from app_files package
 from app_files import __version__  # Add this import
@@ -20,6 +22,9 @@ class AplicativoUnificado:
         self.root = tk.Tk()
         # Load language from user preferences
         self.language = user_preferences.get_preference('language', 'pt')
+        
+        # Set application icon
+        self.set_app_icon()
         
         # Create tab context menu
         self.tab_menu = tk.Menu(self.root, tearoff=0)
@@ -42,10 +47,34 @@ class AplicativoUnificado:
         self.root.geometry("1200x800")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(1, weight=1)
-        
-        # Set up window close handler
+          # Set up window close handler
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)    
         
+    def set_app_icon(self):
+        """Set the application icon from utils/icon.png"""
+        try:
+            # Get the path to the icon file in the utils folder
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            utils_dir = os.path.join(current_dir, 'utils')
+            icon_path = os.path.join(utils_dir, 'icon.png')
+            
+            # Check if the icon file exists
+            if not os.path.exists(icon_path):
+                logging.warning(f"Icon file not found at: {icon_path}")
+                return
+                
+            # Create a PhotoImage from the icon file
+            icon = tk.PhotoImage(file=icon_path)
+            
+            # Set as application icon
+            self.root.iconphoto(True, icon)
+            
+            # Store the icon to prevent garbage collection
+            self.icon = icon
+            
+        except Exception as e:
+            logging.error(f"Error setting application icon: {e}")
+            
     def setup_toolbar(self):
         """Set up toolbar with application controls"""
         # Create toolbar frame
@@ -486,10 +515,11 @@ class AplicativoUnificado:
             width=25
         )
         uncertainty_btn.pack(pady=10)
-          # Settings button
+        
+        # Settings button
         settings_btn = ttk.Button(
             button_frame,
-            text=TRANSLATIONS[self.language]['settings'],
+            text=TRANSLATIONS[self.language].get('settings', 'Configurações'),
             command=self.open_settings_dialog,
             width=25
         )

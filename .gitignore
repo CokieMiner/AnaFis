@@ -75,7 +75,6 @@ Thumbs.db
 *.pyc
 *.json
 *.xlsx
-*.png
 /notcode
 
 # Backup files
