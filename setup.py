@@ -1,14 +1,21 @@
 """Setup script for AnaFis package"""
-from setuptools import setup, find_packages
 import os
+from setuptools import setup, find_packages
 
 # Read the README file for long description
 def read_readme():
+    """Read README.md file content for package long description.
+    
+    Returns:
+        str: Content of README.md file or default description if file not found.
+    """
     try:
         with open(os.path.join(os.path.dirname(__file__), "README.md"), "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "AnaFis is a Python app for physics data analysis. It provides tools for curve fitting, uncertainty calculations, and data visualization."
+        return ("AnaFis is a Python app for physics data analysis. "
+                "It provides tools for curve fitting, uncertainty calculations, "
+                "and data visualization.")
 
 setup(
     name="AnaFis",
@@ -38,8 +45,7 @@ setup(
         "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering :: Physics",
         "Topic :: Scientific/Engineering :: Mathematics",
-    ],
-    keywords="physics data-analysis curve-fitting uncertainty-propagation",
+    ],    keywords="physics data-analysis curve-fitting uncertainty-propagation",
     entry_points={
         "console_scripts": [
             "anafis=run:main"

@@ -32,6 +32,10 @@ class AdjustmentPointsManager:
         
         # Store the selected points state (default: all selected)
         self.selected_point_indices = None
+        # Initialize attributes that are conditionally created in UI methods
+        self.point_selections = []
+        self.min_x_entry = None
+        self.max_x_entry = None
     
     def setup_ui(self, parent_frame: tk.Widget, maximize_scrollbox: bool = False) -> None:
         """Set up the UI for adjustment points
@@ -79,12 +83,15 @@ class AdjustmentPointsManager:
         
         # Initialize the options based on current selection
         self.update_adjustment_points()
-        
-        # Bind the dropdown to update the options
+          # Bind the dropdown to update the options
         points_dropdown.bind("<<ComboboxSelected>>", self.update_adjustment_points)
     
-    def update_adjustment_points(self, event=None):
-        """Update UI based on selected adjustment points type"""
+    def update_adjustment_points(self, _event=None):
+        """Update UI based on selected adjustment points type
+        
+        Args:
+            _event: Event parameter required by tkinter combobox binding but not used
+        """
         # Make sure adjust_options_frame exists before clearing it
         if self.adjust_options_frame is None:
             return
@@ -177,8 +184,7 @@ class AdjustmentPointsManager:
             self.max_x_entry.grid(row=1, column=1, padx=5, pady=2)
             if hasattr(self.parent, 'x') and len(self.parent.x) > 0:
                 self.max_x_entry.insert(0, str(np.max(self.parent.x)))
-            
-            # Add an "Apply" button to apply range changes immediately
+              # Add an "Apply" button to apply range changes immediately
             apply_button = ttk.Button(
                 range_frame, 
                 text=TRANSLATIONS[self.language].get('apply', 'Aplicar'),
@@ -190,9 +196,12 @@ class AdjustmentPointsManager:
             self.min_x_entry.bind("<Return>", lambda e: self.save_points())
             self.max_x_entry.bind("<Return>", lambda e: self.save_points())
 
-    def on_checkbox_changed(self, index):
-        """Handle checkbox state changes"""
-        # Update the points immediately when a checkbox changes
+    def on_checkbox_changed(self, _index):
+        """Handle checkbox state changes
+        
+        Args:
+            _index: Index of the checkbox that changed (required by trace callback but not used)
+        """        # Update the points immediately when a checkbox changes
         self.save_points()
 
     def get_selected_points(self):
@@ -211,7 +220,7 @@ class AdjustmentPointsManager:
             # Use only checked points
             indices = [i for i, var in enumerate(self.point_selections) if var.get()]
             
-        elif selection == "Faixa" and hasattr(self, 'min_x_entry') and hasattr(self, 'max_x_entry'):
+        elif selection == "Faixa" and hasattr(self, 'min_x_entry') and hasattr(self, 'max_x_entry') and self.min_x_entry is not None and self.max_x_entry is not None:
             # Use points in the specified range
             try:
                 min_x = float(self.min_x_entry.get())
