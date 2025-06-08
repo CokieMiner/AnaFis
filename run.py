@@ -51,10 +51,8 @@ def show_splash_screen():
 def main():
     """Main entry point for the application"""
     # Show splash screen
-    splash, progress = show_splash_screen()
-
-    # Function to update progress
-    def update_progress(i=0):
+    splash, progress = show_splash_screen()    # Function to update progress
+    def update_progress(i: int = 0):
         if i <= 100:
             progress['value'] = i
             splash.update_idletasks()

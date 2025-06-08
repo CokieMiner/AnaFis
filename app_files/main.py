@@ -1,11 +1,11 @@
-﻿"""Main application module"""
+"""Main application module"""
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import logging
 import os
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Union, List
 
 # Import the version from app_files package
 from app_files import __version__
@@ -16,12 +16,16 @@ from app_files.gui.ajuste_curva.main_gui import AjusteCurvaFrame
 from app_files.gui.incerteza.calculo_incertezas_gui import CalculoIncertezasFrame
 from app_files.gui.settings.settings_dialog import SettingsDialog
 
+# Type alias for language
+LanguageType = Union[str, Any]
+
 class AplicativoUnificado:
     """Main application class with tabbed interface"""
+
     def __init__(self) -> None:
         self.root = tk.Tk()
-        # Load language from user preferences
-        self.language = user_preferences.get_preference('language', 'pt')
+        # Load language from user preferences - explicitly type as str
+        self.language: str = user_preferences.get_preference('language', 'pt')
 
         # Initialize UI component attributes with proper typing
         self.lang_label: Optional[ttk.Label] = None
@@ -55,7 +59,7 @@ class AplicativoUnificado:
         # Setup main UI components
         self.setup_toolbar()
         self.setup_notebook()
-          # Configure root layout
+        # Configure root layout
         self.root.geometry("1200x800")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(1, weight=1)
@@ -92,12 +96,12 @@ class AplicativoUnificado:
         # Create toolbar frame
         self.toolbar_frame = ttk.Frame(self.root)
         self.toolbar_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=2)
-          # Configure toolbar columns
+        # Configure toolbar columns
         self.toolbar_frame.columnconfigure(0, weight=0)  # Curve fitting button
         self.toolbar_frame.columnconfigure(1, weight=0)  # Uncertainty button
         self.toolbar_frame.columnconfigure(2, weight=1)  # Empty space
         self.toolbar_frame.columnconfigure(3, weight=0)  # Language label
-          # Add buttons to toolbar
+        # Add buttons to toolbar
         curve_fit_btn = ttk.Button(
             self.toolbar_frame,
             text=TRANSLATIONS[self.language]['curve_fitting'],
@@ -114,13 +118,10 @@ class AplicativoUnificado:
 
     def setup_language_selector(self):
         """Set up language selector in toolbar"""
-        if self.toolbar_frame is None:
-            return
-
         # Create language frame
         lang_frame = ttk.Frame(self.toolbar_frame)
         lang_frame.grid(row=0, column=3, padx=5, sticky="e")
-          # Language label
+        # Language label
         self.lang_label = ttk.Label(
             lang_frame, text=TRANSLATIONS[self.language]['language_label'])
         self.lang_label.grid(row=0, column=0, padx=(0, 5))
@@ -137,7 +138,7 @@ class AplicativoUnificado:
         self.lang_dropdown.grid(row=0, column=1)
         self.lang_dropdown.bind('<<ComboboxSelected>>', self.on_language_changed)
 
-    def on_language_changed(self, event=None):
+    def on_language_changed(self, event: Optional[Any] = None) -> None:
         """Handle language dropdown selection change"""
         # Underscore prefix indicates intentionally unused parameter
         _ = event  # Event parameter required by tkinter but not used
@@ -170,7 +171,7 @@ class AplicativoUnificado:
         self._update_open_tab_instances()
         # Update tab texts in notebook
         self._update_notebook_tabs()
-              # Refresh home tab to update all text
+        # Refresh home tab to update all text
         if hasattr(self, 'home_tab'):
             for widget in self.home_tab.winfo_children():
                 widget.destroy()
@@ -189,26 +190,29 @@ class AplicativoUnificado:
                         text=TRANSLATIONS[self.language]['curve_fitting'])
                 elif current_text in [
                     TRANSLATIONS['pt']['uncertainty_calc'],
-                    TRANSLATIONS['en']['uncertainty_calc']
-                ]:
+                    TRANSLATIONS['en']['uncertainty_calc']                ]:
                     widget.configure(
                         text=TRANSLATIONS[self.language]['uncertainty_calc'])
 
     def _update_notebook_tabs(self):
         """Update notebook tab texts to current language"""
-        for i, _ in enumerate(self.notebook.tabs()):
-            tab_text = self.notebook.tab(i, 'text')
+        # Get tabs list - type: ignore to suppress unknown return type warning
+        tab_ids = self.notebook.tabs()  # type: ignore[misc]
+        tabs_list: List[str] = list(tab_ids)  # type: ignore[misc]
+        for i, _ in enumerate(tabs_list):
+            # Get tab text with type annotation
+            tab_text: str = str(self.notebook.tab(i, 'text'))  # type: ignore[misc]
             if tab_text in [TRANSLATIONS['pt']['curve_fitting'],
                             TRANSLATIONS['en']['curve_fitting']]:
-                self.notebook.tab(
+                self.notebook.tab(  # type: ignore[misc]
                     i, text=TRANSLATIONS[self.language]['curve_fitting'])
             elif tab_text in [TRANSLATIONS['pt']['uncertainty_calc'],
                               TRANSLATIONS['en']['uncertainty_calc']]:
-                self.notebook.tab(
+                self.notebook.tab(  # type: ignore[misc]
                     i, text=TRANSLATIONS[self.language]['uncertainty_calc'])
             elif tab_text in [TRANSLATIONS['pt']['home'],
                               TRANSLATIONS['en']['home']]:
-                self.notebook.tab(
+                self.notebook.tab(  # type: ignore[misc]
                     i, text=TRANSLATIONS[self.language]['home'])
 
     def _update_open_tab_instances(self):
@@ -219,8 +223,10 @@ class AplicativoUnificado:
 
     def restore_tab_close_buttons(self):
         """Check all tabs and restore close buttons if missing"""
-        for tab_id in self.notebook.tabs():
-            tab_frame = self.notebook.nametowidget(tab_id)
+        tab_ids = self.notebook.tabs()  # type: ignore[misc]
+        tabs_list: List[str] = list(tab_ids)  # type: ignore[misc]
+        for tab_id in tabs_list:
+            tab_frame = self.notebook.nametowidget(str(tab_id))
             has_close_button = (hasattr(tab_frame, 'close_button') and
                                 tab_frame.close_button.winfo_exists())
             if not has_close_button:
@@ -239,37 +245,34 @@ class AplicativoUnificado:
         self.open_tabs['home'] = 'home'  # Special marker for home tab
 
         # Setup home tab content
-        self.setup_home_tab()
-
-        # Bind tab change event
+        self.setup_home_tab()        # Bind tab change event
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
-
         # Bind right-click event for context menu
         self.notebook.bind("<Button-3>", self.on_tab_right_click)
 
     def monitor_tabs(self):
         """Periodically check tabs to ensure close buttons are visible"""
         # Skip the home tab (first tab) which shouldn't have a close button
-        for i, tab_id in enumerate(self.notebook.tabs()):
+        tab_ids = self.notebook.tabs()  # type: ignore[misc]
+        tabs_list: List[str] = list(tab_ids)  # type: ignore[misc]
+        for i, tab_id in enumerate(tabs_list):
             if i > 0:  # Skip home tab
-                tab_frame = self.notebook.nametowidget(tab_id)
+                tab_frame = self.notebook.nametowidget(str(tab_id))
                 has_close_button = (
                     hasattr(tab_frame, 'close_button') and
                     tab_frame.close_button.winfo_exists()
                 )
                 if not has_close_button:
-                    self.add_close_button_to_tab(tab_frame)
-
-        # Continue monitoring
+                    self.add_close_button_to_tab(tab_frame)        # Continue monitoring
         self.root.after(1000, self.monitor_tabs)
 
-    def add_close_button_to_tab(self, tab_frame):
+    def add_close_button_to_tab(self, tab_frame: tk.Widget) -> None:
         """Add a close button to tab that stays in place even with resizing content"""
         # Skip adding close button if this is the home tab
         if tab_frame == self.home_tab:
             return
 
-        # Create a container frame for the tab with fixed positioning for the button
+        # Create a container frame for the tab with fixed positioning
         if not hasattr(tab_frame, 'header_frame'):
             # Create a header frame that will stay at the top of the tab
             header_frame = ttk.Frame(tab_frame)
@@ -287,13 +290,14 @@ class AplicativoUnificado:
             # Use setattr to avoid Pylance warnings
             setattr(tab_frame, 'header_frame', header_frame)
             setattr(tab_frame, 'close_button', close_button)
-              # If tab already has content, repack it below the header
+
+            # If tab already has content, repack it below the header
             for widget in tab_frame.winfo_children():
                 if widget != header_frame:
                     widget.pack_forget()
                     widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-    def try_close_tab(self, tab_frame):
+    def try_close_tab(self, tab_frame: tk.Widget) -> None:
         """Try to close a tab by finding its numeric index
 
         Args:
@@ -301,15 +305,17 @@ class AplicativoUnificado:
         """
         try:
             # Find the tab's index
-            for i, tab_id in enumerate(self.notebook.tabs()):
-                if str(self.notebook.nametowidget(tab_id)) == str(tab_frame):
+            tab_ids = self.notebook.tabs()  # type: ignore[misc]
+            tabs_list: List[str] = list(tab_ids)  # type: ignore[misc]
+            for i, tab_id in enumerate(tabs_list):
+                if str(self.notebook.nametowidget(str(tab_id))) == str(tab_frame):
                     # Found the tab - close it
                     self.close_tab_at_index(i)
                     return
         except (tk.TclError, AttributeError) as e:
             logging.error("Error finding tab to close: %s", e)
 
-    def close_tab_at_index(self, index):
+    def close_tab_at_index(self, index: int) -> None:
         """Close a tab at a specific index
 
         Args:
@@ -318,7 +324,9 @@ class AplicativoUnificado:
         try:
             # Prevent closing the home tab (index 0)
             if index == 0:
-                return            # Find the corresponding tab instance
+                return
+
+            # Find the corresponding tab instance
             tab_to_close = None
             tab_name_to_close = None
 
@@ -349,24 +357,25 @@ class AplicativoUnificado:
                 del self.open_tabs[tab_name_to_close]
 
             # Remove the tab from the notebook
-            self.notebook.forget(index)
+            self.notebook.forget(index)  # type: ignore[misc]
         except (tk.TclError, ValueError, KeyError) as e:
             logging.error("Error closing tab: %s", e)
 
-    def on_tab_right_click(self, event):
+    def on_tab_right_click(self, event: Any) -> None:
         """Show context menu on right-click"""
-        try:
-            # First check if there are any tabs
-            if not self.notebook.tabs():
+        try:            # First check if there are any tabs
+            tab_ids = self.notebook.tabs()  # type: ignore[misc]
+            if not tab_ids:
                 return  # No tabs to show menu for
 
             # Try to identify which tab was clicked
             try:
-                tab_index = self.notebook.index(f"@{event.x},{event.y}")
+                tab_index: int = int(self.notebook.index(  # type: ignore[misc]
+                    f"@{event.x},{event.y}"))
 
                 # If we got a valid index, select that tab
                 if tab_index >= 0:
-                    self.notebook.select(tab_index)
+                    self.notebook.select(tab_index)  # type: ignore[misc]
 
                     # Don't show close option for home tab (index 0)
                     if tab_index == 0:
@@ -385,7 +394,8 @@ class AplicativoUnificado:
         """Close the currently selected tab"""
         try:
             # Get the current tab index
-            current_index = self.notebook.index(self.notebook.select())
+            selected_tab = str(self.notebook.select())  # type: ignore[misc]
+            current_index: int = int(self.notebook.index(selected_tab))  # type: ignore[misc]
 
             # Close the tab at that index
             self.close_tab_at_index(current_index)
@@ -412,8 +422,7 @@ class AplicativoUnificado:
                 header_frame,
                 text="X",
                 width=2,
-                command=lambda: self.try_close_tab(tab_frame)
-            )
+                command=lambda: self.try_close_tab(tab_frame)            )
             close_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
             # Create a content frame for the tab content
@@ -421,12 +430,16 @@ class AplicativoUnificado:
             content_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
             # Initialize the curve fitting module in the content frame
-            curve_fitting = AjusteCurvaFrame(content_frame, self.language)
-
+            curve_fitting = AjusteCurvaFrame(
+                content_frame, self.language)
             # Add the tab to the notebook
-            self.notebook.add(tab_frame, text=TRANSLATIONS[self.language]['curve_fitting'])
-            self.notebook.select(tab_frame)
-              # Store references
+            self.notebook.add(
+                tab_frame,
+                text=TRANSLATIONS[self.language]['curve_fitting']
+            )
+            self.notebook.select(tab_frame)  # type: ignore[misc]
+
+            # Store references
             setattr(tab_frame, 'close_button', close_button)
             setattr(tab_frame, 'header_frame', header_frame)
             setattr(tab_frame, 'content_frame', content_frame)
@@ -443,31 +456,31 @@ class AplicativoUnificado:
             # Add the tab to the notebook
             self.notebook.add(tab, text=TRANSLATIONS[self.language]['uncertainty_calc'])
 
-            # Add a close button to the tab
-            self.add_close_button_to_tab(tab)            # Create tab instance
+            # Add a close button to the tab            self.add_close_button_to_tab(tab)
+
+            # Create tab instance
             uncertainty_calc = CalculoIncertezasFrame(tab, self.language)
 
             # Generate unique key similar to curve fitting tabs
             uncertainty_count = len([
                 k for k in self.open_tabs
-                if 'uncertainty_calc' in k
-            ]) + 1
+                if 'uncertainty_calc' in k            ]) + 1
             tab_key = f"uncertainty_calc_{uncertainty_count}"
 
             # Store reference to the tab instance
             self.open_tabs[tab_key] = uncertainty_calc
 
             # Select the newly created tab (it's the last one)
-            self.notebook.select(len(self.notebook.tabs()) - 1)
+            tab_ids = self.notebook.tabs()  # type: ignore[misc]
+            self.notebook.select(   # type: ignore[misc]
+                len(tab_ids) - 1)  # type: ignore[misc]
 
             return tab
-
         except (ImportError, AttributeError, tk.TclError) as e:
-            messagebox.showerror("Error", f"Failed to create tab: {str(e)}")
+            messagebox.showerror("Error", f"Failed to create tab: {str(e)}")  # type: ignore[misc]
             return None
 
-
-    def switch_language(self, new_language):
+    def switch_language(self, new_language: str) -> None:
         """Switch the application language"""
         if new_language in ['pt', 'en'] and new_language != self.language:
             self.language = new_language
@@ -475,18 +488,20 @@ class AplicativoUnificado:
             if hasattr(self, 'lang_var') and self.lang_var is not None:
                 self.lang_var.set("Português" if new_language == 'pt' else "English")
             self.update_ui_language()
-    def on_tab_changed(self, event=None):
+
+    def on_tab_changed(self, event: Optional[Any] = None) -> None:
         """Handle tab changed event"""
         # Underscore prefix indicates intentionally unused parameter
         _ = event  # Event parameter required by tkinter but not used
 
         # Only activate if there are tabs
-        if not self.notebook.tabs():
+        tab_ids = self.notebook.tabs()  # type: ignore[misc]
+        if not tab_ids:
             return
 
         # Get the current tab index
         try:
-            current_tab = self.notebook.select()
+            current_tab = str(self.notebook.select())  # type: ignore[misc]
             if not current_tab:
                 return
 
@@ -586,12 +601,11 @@ class AplicativoUnificado:
 
     def open_settings_dialog(self):
         """Open settings dialog to configure user preferences"""
-
         # Create and show settings dialog
         dialog = SettingsDialog(self.root, self.language, callback=self.on_settings_changed)
         self.root.wait_window(dialog.top)
 
-    def on_settings_changed(self, updated_settings):
+    def on_settings_changed(self, updated_settings: Dict[str, Any]) -> None:
         """Handle when settings are changed
 
         Args:
