@@ -8,6 +8,16 @@ AnaFis é uma aplicação abrangente para análise de dados físicos com interfa
 
 AnaFis requer Python 3.8 ou mais recente.
 
+### Executável Pré-compilado (Windows)
+
+Para usuários Windows, um executável autônomo está disponível que não requer instalação do Python:
+
+1. Baixe a versão mais recente da seção de releases
+2. Extraia a pasta `AnaFis` para o local desejado
+3. Execute `AnaFis.exe` diretamente
+
+O executável é portátil e inclui todas as dependências.
+
 ### Opção 1: Instalar usando setup.py (Recomendado)
 
 Clone ou baixe o repositório e execute:
@@ -134,6 +144,37 @@ AnaFis suporta interfaces em Português e Inglês. Você pode trocar idiomas usa
 - Para grandes conjuntos de dados, considere pré-processamento ou amostragem dos dados
 - Funções personalizadas complexas podem requerer maior tempo de computação
 - Salve seu trabalho frequentemente ao trabalhar com análises grandes
+
+## Criando Executável
+
+Para criar um executável autônomo para Windows:
+
+### Pré-requisitos
+```bash
+pip install pyinstaller
+```
+
+### Processo de Compilação
+1. Use os scripts de compilação fornecidos:
+   ```cmd
+   # Windows Batch
+   build_exe.bat
+   ```
+
+2. Ou compile manualmente:
+   ```bash
+   python -m PyInstaller --clean AnaFis.spec
+   ```
+
+3. O executável será criado em `dist\AnaFis\AnaFis.exe`
+
+### Configuração da Compilação
+- O arquivo `AnaFis.spec` contém todas as configurações de compilação
+- Inclui todas as dependências e arquivos de dados necessários
+- Otimizado para tamanho e performance
+- Cria uma distribuição portátil
+
+Para mais detalhes, veja [DISTRIBUTION.md](DISTRIBUTION.md).
 
 ## Requisitos do Sistema
 

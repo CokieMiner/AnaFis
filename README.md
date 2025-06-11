@@ -8,6 +8,16 @@ AnaFis is a comprehensive physics data analysis application with a modern graphi
 
 AnaFis requires Python 3.8 or newer.
 
+### Pre-built Executable (Windows)
+
+For Windows users, a standalone executable is available that doesn't require Python installation:
+
+1. Download the latest release from the releases section
+2. Extract the `AnaFis` folder to your desired location
+3. Run `AnaFis.exe` directly
+
+The executable is portable and includes all dependencies.
+
 ### Option 1: Install using setup.py (Recommended)
 
 Clone or download the repository and run:
@@ -134,6 +144,40 @@ AnaFis supports both Portuguese and English interfaces. You can switch languages
 - For large datasets, consider data preprocessing or sampling
 - Complex custom functions may require longer computation time
 - Save your work frequently when working with large analyses
+
+## Building Executable
+
+To create a standalone Windows executable:
+
+### Prerequisites
+```bash
+pip install pyinstaller
+```
+
+### Build Process
+1. Use the provided build scripts:
+   ```cmd
+   # Windows Batch
+   build_exe.bat
+   
+   # PowerShell
+   .\build_exe.ps1
+   ```
+
+2. Or build manually:
+   ```bash
+   python -m PyInstaller --clean AnaFis.spec
+   ```
+
+3. The executable will be created in `dist\AnaFis\AnaFis.exe`
+
+### Build Configuration
+- The `AnaFis.spec` file contains all build settings
+- Includes all necessary dependencies and data files
+- Optimized for size and performance
+- Creates a portable distribution
+
+For more details, see [DISTRIBUTION.md](DISTRIBUTION.md).
 
 ## System Requirements
 
