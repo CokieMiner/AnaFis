@@ -22,6 +22,13 @@ TRANSLATIONS: Dict[str, Dict[str, Any]] = {
         # ===============================
         'loading_title': 'Carregando AnaFis',
         'loading_message': 'Iniciando AnaFis...',
+        'initializing': 'Inicializando...',
+        'initialization_complete': 'Inicialização concluída',
+        'loading_preferences': 'Carregando preferências...',
+        'loading_features': 'Inicializando recursos...',
+        'loading_modules': 'Carregando módulos...',
+        'loading_plugins': 'Carregando plugins...',
+        'loading_interface': 'Carregando interface...',
 
         # ===============================
         # SHARED/GENERAL UI ELEMENTS
@@ -230,6 +237,13 @@ TRANSLATIONS: Dict[str, Dict[str, Any]] = {
         # ===============================
         'loading_title': 'Loading AnaFis',
         'loading_message': 'Starting AnaFis...',
+        'initializing': 'Initializing...',
+        'initialization_complete': 'Initialization complete',
+        'loading_preferences': 'Loading preferences...',
+        'loading_features': 'Initializing features...',
+        'loading_modules': 'Loading modules...',
+        'loading_plugins': 'Loading plugins...',
+        'loading_interface': 'Loading interface...',
 
         # ===============================
         # SHARED/GENERAL UI ELEMENTS

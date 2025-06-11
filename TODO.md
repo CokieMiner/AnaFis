@@ -88,7 +88,24 @@
   - [ ] Table-to-plot data synchronization
   - [ ] Undo/redo functionality for table operations
 
-### 3. Equation Solving Module
+### 3. Feature Flags & Plugin System Integration
+- [ ] **Feature Flags Implementation**
+  - [ ] Integrate FeatureManager into main application startup
+  - [ ] Add feature flag checks before loading modules
+  - [ ] Create UI for enabling/disabling features in settings
+  - [ ] Save feature states to user preferences
+  - [ ] Add feature-specific loading messages during startup
+  
+- [ ] **Plugin System Enhancement**
+  - [ ] Create `/plugins` directory structure
+  - [ ] Define plugin interface/API specification
+  - [ ] Implement actual plugin loading mechanism
+  - [ ] Add plugin management UI in settings
+  - [ ] Create example plugins for demonstration
+  - [ ] Plugin dependency management
+  - [ ] Plugin hot-loading/unloading capability
+
+### 4. Equation Solving Module
 - [ ] **Symbolic Equation Solver**
   - [ ] Create new module for equation solving
   - [ ] Support for linear and nonlinear equations
@@ -106,7 +123,7 @@
 
 ## 📋 TODO - Medium Priority
 
-### 4. Enhanced Data Visualization
+### 5. Enhanced Data Visualization
 - [ ] **Advanced Plotting Options**
   - [ ] 3D plotting capabilities
   - [ ] Multiple y-axes support
@@ -120,7 +137,7 @@
   - [ ] Crosshair cursor with coordinates
   - [ ] Plot legends customization
 
-### 5. File Management Improvements
+### 6. File Management Improvements
 - [ ] **Recent Files System**
   - [ ] Recent files menu implementation
   - [ ] Project file format (.anafis files)
@@ -132,7 +149,7 @@
   - [ ] Backup restoration interface
   - [ ] Configurable backup intervals
 
-### 6. Advanced Mathematical Features
+### 7. Advanced Mathematical Features
 - [ ] **Extended Function Library**
   - [ ] More preset models (Gaussian, Lorentzian, etc.)
   - [ ] Statistical distributions
@@ -149,7 +166,7 @@
 
 ## 🔧 TODO - Low Priority
 
-### 7. User Experience Enhancements
+### 8. User Experience Enhancements
 - [ ] **Help System**
   - [ ] Built-in help documentation
   - [ ] Tutorial system for new users
@@ -162,14 +179,14 @@
   - [ ] Keyboard navigation
   - [ ] Screen reader compatibility
 
-### 8. Performance Optimizations
+### 9. Performance Optimizations
 - [ ] **Large Dataset Handling**
   - [ ] Lazy loading for large files
   - [ ] Data sampling for visualization
   - [ ] Memory usage optimization
   - [ ] Background processing for long calculations
 
-### 9. Plugin System
+### 10. Legacy Plugin System (Superseded by #3)
 - [ ] **Extensibility Framework**
   - [ ] Plugin architecture design
   - [ ] Custom model plugins
