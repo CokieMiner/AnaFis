@@ -1,7 +1,7 @@
 """Point selection and adjustment UI for curve fitting"""
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List, Optional # Added Any and List
 import numpy as np
 
 from app_files.utils.constants import TRANSLATIONS
@@ -24,18 +24,18 @@ class AdjustmentPointsManager:
         
         # Create adjustment point type variable
         self.adjustment_points_type = tk.StringVar(value="Todos")
-        self.adjust_options_frame = None
+        self.adjust_options_frame: Optional[ttk.Frame] = None # Added type hint
         # Storage for scrollable components when maximized
-        self.scrollable_frame = None
-        self.canvas = None
-        self.select_frame = None
+        self.scrollable_frame: Optional[ttk.Frame] = None # Added type hint
+        self.canvas: Optional[tk.Canvas] = None # Added type hint
+        self.select_frame: Optional[ttk.Frame] = None # Added type hint
         
         # Store the selected points state (default: all selected)
-        self.selected_point_indices = None
+        self.selected_point_indices: Optional[List[int]] = None # Added type hint
         # Initialize attributes that are conditionally created in UI methods
-        self.point_selections = []
-        self.min_x_entry = None
-        self.max_x_entry = None
+        self.point_selections: List[tk.BooleanVar] = [] # Added type hint
+        self.min_x_entry: Optional[ttk.Entry] = None # Added type hint
+        self.max_x_entry: Optional[ttk.Entry] = None # Added type hint
     
     def setup_ui(self, parent_frame: tk.Widget, maximize_scrollbox: bool = False) -> None:
         """Set up the UI for adjustment points
@@ -84,9 +84,9 @@ class AdjustmentPointsManager:
         # Initialize the options based on current selection
         self.update_adjustment_points()
           # Bind the dropdown to update the options
-        points_dropdown.bind("<<ComboboxSelected>>", self.update_adjustment_points)
+        points_dropdown.bind("<<ComboboxSelected>>", self.update_adjustment_points) # type: ignore[arg-type]
     
-    def update_adjustment_points(self, _event=None):
+    def update_adjustment_points(self, _event: Optional[Any] = None) -> None: # Added Optional[Any] for _event
         """Update UI based on selected adjustment points type
         
         Args:
@@ -119,7 +119,7 @@ class AdjustmentPointsManager:
                 self.scrollable_frame.pack(fill=tk.BOTH, expand=True)
 
                 self.canvas = tk.Canvas(self.scrollable_frame, height=150)
-                scrollbar = ttk.Scrollbar(self.scrollable_frame, orient="vertical", command=self.canvas.yview)
+                scrollbar = ttk.Scrollbar(self.scrollable_frame, orient="vertical", command=self.canvas.yview) # type: ignore[arg-type, misc]
                 self.select_frame = ttk.Frame(self.canvas)
                 
                 # Configure scrolling
@@ -147,17 +147,16 @@ class AdjustmentPointsManager:
                     cb.grid(row=i, column=0, sticky="w", padx=5, pady=2)
                     
                     # Add callback to immediately apply changes when checkbox is toggled
-                    var.trace_add("write", lambda *args, idx=i: self.on_checkbox_changed(idx))
+                    var.trace_add("write", lambda *args, idx=i: self.on_checkbox_changed(idx)) # type: ignore[arg-type]
                 
                 # Configure canvas scrolling
-                def configure_canvas(event):
+                def configure_canvas(event: Any) -> None: # Added Any for event type
                     # Check that canvas still exists
                     if self.canvas is not None:
                         # Safe access to canvas methods with proper checks
                         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-                        # Make sure canvas_window is valid before configuring
-                        if canvas_window is not None:
-                            self.canvas.itemconfig(canvas_window, width=event.width)
+                        # canvas_window is guaranteed to be an int if self.canvas was not None when it was created
+                        self.canvas.itemconfig(canvas_window, width=event.width)
                 
                 self.select_frame.bind("<Configure>", configure_canvas)
                 
@@ -193,10 +192,12 @@ class AdjustmentPointsManager:
             apply_button.grid(row=2, column=0, columnspan=2, pady=10)
             
             # Also bind the Return key to save points
-            self.min_x_entry.bind("<Return>", lambda e: self.save_points())
-            self.max_x_entry.bind("<Return>", lambda e: self.save_points())
+            if self.min_x_entry:
+                self.min_x_entry.bind("<Return>", lambda e: self.save_points()) # type: ignore[arg-type]
+            if self.max_x_entry:
+                self.max_x_entry.bind("<Return>", lambda e: self.save_points()) # type: ignore[arg-type]
 
-    def on_checkbox_changed(self, _index):
+    def on_checkbox_changed(self, _index: int) -> None: # Changed _index type to int
         """Handle checkbox state changes
         
         Args:
@@ -204,13 +205,13 @@ class AdjustmentPointsManager:
         """        # Update the points immediately when a checkbox changes
         self.save_points()
 
-    def get_selected_points(self):
+    def get_selected_points(self) -> List[int]: # Added return type hint
         """Get indices of points to use based on current selection mode"""
-        if not hasattr(self.parent, 'x') or len(self.parent.x) == 0:
+        if not hasattr(self.parent, 'x') or not self.parent.x.any(): # Changed to self.parent.x.any()
             return []
             
         selection = self.adjustment_points_type.get()
-        indices = []
+        indices: List[int] = [] # Initialize with type
         
         if selection == "Todos" or selection == "":
             # Use all points
@@ -220,19 +221,19 @@ class AdjustmentPointsManager:
             # Use only checked points
             indices = [i for i, var in enumerate(self.point_selections) if var.get()]
             
-        elif selection == "Faixa" and hasattr(self, 'min_x_entry') and hasattr(self, 'max_x_entry') and self.min_x_entry is not None and self.max_x_entry is not None:
+        elif selection == "Faixa" and self.min_x_entry is not None and self.max_x_entry is not None:
             # Use points in the specified range
             try:
                 min_x = float(self.min_x_entry.get())
                 max_x = float(self.max_x_entry.get())
-                indices = [i for i, x in enumerate(self.parent.x) if min_x <= x <= max_x]
+                indices = [i for i, x_val in enumerate(self.parent.x) if min_x <= float(x_val) <= max_x] # Renamed x to x_val, cast x_val to float
             except ValueError:
                 # Fall back to all points if conversion fails
                 indices = list(range(len(self.parent.x)))
                 
         return indices
     
-    def save_points(self):
+    def save_points(self) -> None: # Added return type hint
         """Save the current adjustment points"""
         selection = self.adjustment_points_type.get()
         

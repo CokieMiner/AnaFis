@@ -142,6 +142,17 @@ AnaFis supports both Portuguese and English interfaces. You can switch languages
 - **Memory**: Minimum 4GB RAM recommended
 - **Storage**: At least 100MB free space for installation
 
+## Roadmap
+
+### Upcoming Features
+- **Complete Settings Integration**: Full theme support with light/dark/auto modes
+- **Excel-like Tables**: Spreadsheet-style data entry and editing capabilities  
+- **Equation Solving Module**: Symbolic and numerical equation solver
+- **Enhanced Data Visualization**: 3D plotting, advanced customization options
+- **File Management**: Project files, recent files menu, auto-save functionality
+
+See [TODO.md](TODO.md) for the complete development roadmap and feature planning.
+
 ## Contributing
 
 AnaFis is open for contributions. Please feel free to submit issues, feature requests, or pull requests to improve the application.

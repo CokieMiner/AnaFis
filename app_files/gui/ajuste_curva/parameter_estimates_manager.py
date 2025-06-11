@@ -2,15 +2,21 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sympy as sp
-from typing import TYPE_CHECKING, Dict, List, Any
+from typing import TYPE_CHECKING, Dict, List, cast, Any # Added Any back
 
 from app_files.utils.constants import TRANSLATIONS
 
 if TYPE_CHECKING:
+    # from tkinter import Event # Keep or change based on usage - We are using tk.Event now
     from app_files.gui.ajuste_curva.main_gui import AjusteCurvaFrame
 
 class ParameterEstimatesManager:
     """Manages parameter estimates for curve fitting"""
+    parent: 'AjusteCurvaFrame'
+    language: str
+    param_entries: Dict[str, ttk.Entry]
+    parameters: List[sp.Symbol]
+    estimates_frame: ttk.LabelFrame # Added type hint for estimates_frame
     
     def __init__(self, parent_frame: 'AjusteCurvaFrame', language: str = 'pt') -> None:
         """Initialize the parameter estimates manager
@@ -70,13 +76,14 @@ class ParameterEstimatesManager:
                 popup_entry.insert(0, entry.get())  # Copy current value
                 
                 # Make the popup entry update the main entry when changed
-                def update_main_entry(event, param=param_name, popup_widget=popup_entry):
-                    self.param_entries[param].delete(0, tk.END)
-                    self.param_entries[param].insert(0, popup_widget.get())
+                def update_main_entry(event: tk.Event[Any], param: str = param_name, popup_widget: ttk.Entry = popup_entry) -> None: # Changed tk.Event to tk.Event[Any]
+                    main_entry = self.param_entries[param]
+                    main_entry.delete(0, tk.END)
+                    main_entry.insert(0, popup_widget.get())
                 
                 popup_entry.bind("<FocusOut>", update_main_entry)
     
-    def update_estimates_frame(self, equation):
+    def update_estimates_frame(self, equation: str) -> None: # Added type hint for equation and return
         """Update the estimates frame based on the equation
         
         Args:
@@ -86,7 +93,8 @@ class ParameterEstimatesManager:
         for widget in self.estimates_frame.winfo_children():
             widget.destroy()
             
-        self.param_entries = {}  # Reset the parameter entries dictionary
+        # Reset the parameter entries dictionary
+        self.param_entries = {}
 
         try:
             # Process equation
@@ -98,21 +106,22 @@ class ParameterEstimatesManager:
             self.parameters = self.extract_parameters(equation)
 
             # Create input fields for each parameter
-            for i, param in enumerate(self.parameters):
-                ttk.Label(self.estimates_frame, text=f"{param}:").grid(row=i, column=0, padx=5, pady=2)
+            for i, param_sym in enumerate(self.parameters): # Renamed param to param_sym for clarity
+                param_name: str = str(param_sym) # Explicitly convert symbol to string for key
+                ttk.Label(self.estimates_frame, text=f"{param_name}:").grid(row=i, column=0, padx=5, pady=2)
                 entry = ttk.Entry(self.estimates_frame, width=10)
                 entry.insert(0, "1.0")
                 entry.grid(row=i, column=1, padx=5, pady=2)
-                self.param_entries[str(param)] = entry  # Store in dictionary
+                self.param_entries[param_name] = entry  # Store in dictionary
                 # For compatibility with existing code
-                setattr(self.parent, f"estimate_{param}", entry)
+                setattr(self.parent, f"estimate_{param_name}", entry)
         except Exception as e:
-            messagebox.showerror(
+            messagebox.showerror( # type: ignore[reportUnknownMemberType]
                 TRANSLATIONS[self.language]['error'],
                 TRANSLATIONS[self.language]['invalid_formula'].format(error=str(e))
             )
     
-    def extract_parameters(self, equation):
+    def extract_parameters(self, equation: str) -> List[sp.Symbol]: # Added type hint for equation and return
         """Extract parameters from equation
         
         Args:
@@ -123,31 +132,35 @@ class ParameterEstimatesManager:
         """
         try:
             # Parse the equation with sympy
-            expr = sp.sympify(equation)
+            # Add type ignore for sympify and free_symbols as Pylance struggles with their complex types
+            expr: sp.Expr = cast(sp.Expr, sp.sympify(equation)) # type: ignore[reportUnknownMemberType]
             
             # Find all symbols in the expression
-            symbols = list(expr.free_symbols)
+            symbols: List[sp.Symbol] = list(cast(set[sp.Symbol], expr.free_symbols)) # type: ignore[reportUnknownMemberType]
             
             # Filter out 'x' which is the independent variable
-            parameters = [sym for sym in symbols if sym.name != 'x']
+            parameters_out: List[sp.Symbol] = [sym for sym in symbols if sym.name != 'x'] # Renamed parameters to parameters_out
             
-            return parameters
+            return parameters_out
         except Exception as e:
             print(f"Error extracting parameters: {str(e)}")
             return []
     
-    def get_initial_estimates(self):
+    def get_initial_estimates(self) -> List[float]: # Added type hint for return
         """Get initial parameter estimates
         
         Returns:
             List of parameter values
         """
-        estimates = []
-        for param in self.parameters:
-            entry = self.param_entries.get(str(param))
+        estimates: List[float] = []
+        for param_sym in self.parameters: # Renamed param to param_sym for clarity
+            param_name: str = str(param_sym) # Explicitly convert symbol to string for key
+            entry = self.param_entries.get(param_name)
             if entry:
                 try:
                     estimates.append(float(entry.get()))
                 except ValueError:
                     estimates.append(1.0)  # Default if invalid value
+            else: # Handle case where entry might not exist, though unlikely with current logic
+                estimates.append(1.0)
         return estimates

@@ -4,6 +4,7 @@ from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
 import os
+from typing import Optional, Callable, Dict, Any, Type, Union, List
 
 from app_files.utils.constants import TRANSLATIONS
 from app_files.utils.user_preferences import user_preferences
@@ -11,7 +12,12 @@ from app_files.utils.user_preferences import user_preferences
 class SettingsDialog:
     """Dialog for configuring application settings"""
 
-    def __init__(self, parent, language, callback=None):
+    def __init__(
+        self,
+        parent: tk.Tk,
+        language: str,
+        callback: Optional[Callable[[Dict[str, Any]], None]] = None
+    ):
         """Initialize settings dialog
 
         Args:
@@ -22,7 +28,7 @@ class SettingsDialog:
         self.parent = parent
         self.language = language
         self.callback = callback
-        self.modified_settings = {}
+        self.modified_settings: Dict[str, Any] = {}
           # Create toplevel window
         self.top = tk.Toplevel(parent)
         self.top.title(TRANSLATIONS[language]['settings'])
@@ -152,7 +158,9 @@ class SettingsDialog:
             "<FocusOut>",
             lambda e: self.validate_and_mark('backup_interval_minutes',
                                            self.backup_interval_var.get(), int)
-        )        # Check for updates
+        )
+        
+        # Check for updates
         self.check_updates_var = tk.BooleanVar(
             value=user_preferences.get_preference('check_updates', True)
         )
@@ -190,7 +198,9 @@ class SettingsDialog:
         theme_combo.bind(
             "<<ComboboxSelected>>",
             lambda e: self.mark_setting_changed('theme', self.theme_var.get())
-        )        # Font size
+        )
+        
+        # Font size
         ttk.Label(frame, text=TRANSLATIONS[self.language]['font_size']).grid(
             row=1, column=0, sticky=tk.W, padx=10, pady=5
         )
@@ -201,10 +211,13 @@ class SettingsDialog:
         font_size_entry = ttk.Entry(frame, textvariable=self.font_size_var, width=5)
         font_size_entry.grid(row=1, column=1, sticky=tk.W, padx=10, pady=5)
         font_size_entry.bind(
-            "<FocusOut>",            lambda e: self.validate_and_mark(
+            "<FocusOut>",
+            lambda e: self.validate_and_mark(
                 'font_size', self.font_size_var.get(), int
             )
-        )        # Show tooltips
+        )
+        
+        # Show tooltips
         self.tooltips_var = tk.BooleanVar(
             value=user_preferences.get_preference('show_tooltips', True)
         )
@@ -271,7 +284,9 @@ class SettingsDialog:
             "<FocusOut>",
             lambda e: self.validate_and_mark('decimal_places',
                                            self.decimal_places_var.get(), int)
-        )        # Advanced mode
+        )
+        
+        # Advanced mode
         self.advanced_mode_var = tk.BooleanVar(
             value=user_preferences.get_preference('advanced_mode', False)
         )
@@ -305,7 +320,9 @@ class SettingsDialog:
         graph_dpi_entry.bind(
             "<FocusOut>",
             lambda e: self.validate_and_mark('graph_dpi', self.graph_dpi_var.get(), int)
-        )        # Export format
+        )
+        
+        # Export format
         ttk.Label(frame, text=TRANSLATIONS[self.language]['export_format']).grid(
             row=1, column=0, sticky=tk.W, padx=10, pady=5
         )
@@ -348,7 +365,7 @@ class SettingsDialog:
         )
         browse_btn.grid(row=2, column=2, padx=5, pady=5)
 
-    def mark_setting_changed(self, key, value):
+    def mark_setting_changed(self, key: str, value: Any) -> None:
         """Mark a setting as changed
 
         Args:
@@ -356,7 +373,7 @@ class SettingsDialog:
             value: New value
         """
         self.modified_settings[key] = value
-    def validate_and_mark(self, key, value, value_type):
+    def validate_and_mark(self, key: str, value: str, value_type: Type[Union[int, str]]) -> None:
         """Validate a value and mark as changed if valid
 
         Args:
@@ -381,7 +398,7 @@ class SettingsDialog:
 
             self.mark_setting_changed(key, typed_value)
         except ValueError as e:
-            messagebox.showerror(
+            messagebox.showerror(  # type: ignore[misc]
                 TRANSLATIONS[self.language]['error'],
                 str(e)
             )
@@ -417,7 +434,9 @@ class SettingsDialog:
         selected_dir = filedialog.askdirectory(
             initialdir=current_dir,
             title=TRANSLATIONS[self.language]['select_directory']
-        )        # Update if directory selected
+        )
+        
+        # Update if directory selected
         if selected_dir:
             self.export_dir_var.set(selected_dir)
             self.mark_setting_changed(
@@ -426,47 +445,36 @@ class SettingsDialog:
 
     def save_settings(self):
         """Save all modified settings"""
-        try:
-            # First validate all numeric settings
-            if 'font_size' in self.modified_settings:
-                self.validate_and_mark(
-                    'font_size', str(self.modified_settings['font_size']), int
-                )
+        all_settings_saved = True
+        failed_settings_keys: List[str] = []
 
-            if 'decimal_places' in self.modified_settings:
-                self.validate_and_mark(
-                    'decimal_places', str(self.modified_settings['decimal_places']), int
-                )
-
-            if 'graph_dpi' in self.modified_settings:
-                self.validate_and_mark('graph_dpi', str(self.modified_settings['graph_dpi']), int)
-
-            if 'backup_interval_minutes' in self.modified_settings:
-                self.validate_and_mark(
-                    'backup_interval_minutes',
-                    str(self.modified_settings['backup_interval_minutes']),
-                    int
-                )
-
-            # Save all modified settings
-            for key, value in self.modified_settings.items():
-                user_preferences.set_preference(key, value)
-
-            # Call callback if provided
+        # Attempt to save all modified settings
+        # user_preferences.set_preference will now handle validation internally
+        for key, value in self.modified_settings.items():
+            if not user_preferences.set_preference(key, value):
+                all_settings_saved = False
+                failed_settings_keys.append(key)
+        
+        if all_settings_saved:
+            # Call callback if provided and settings were actually modified and saved
             if self.callback and self.modified_settings:
                 self.callback(self.modified_settings)
-
-            # Close dialog
+            
+            # Close dialog only if all settings saved successfully
             self.top.destroy()
-
-        except (ValueError, OSError, KeyError) as e:
-            messagebox.showerror(
+        else:
+            # Some settings failed validation/saving
+            error_message = TRANSLATIONS[self.language]['save_error_specific'] \
+                            + ": " + ", ".join(failed_settings_keys)
+            messagebox.showerror(  # type: ignore[misc]
                 TRANSLATIONS[self.language]['error'],
-                f"{TRANSLATIONS[self.language]['save_error']}: {str(e)}"
+                error_message
             )
+            # Do not close the dialog, allow user to correct
+
     def reset_to_defaults(self):
         """Reset all settings to default values"""
-        if messagebox.askyesno(
+        if messagebox.askyesno(  # type: ignore[misc]
             TRANSLATIONS[self.language]['confirm'],
             TRANSLATIONS[self.language]['reset_confirm']
         ):

@@ -142,6 +142,17 @@ AnaFis suporta interfaces em Português e Inglês. Você pode trocar idiomas usa
 - **Memória**: Mínimo de 4GB RAM recomendado
 - **Armazenamento**: Pelo menos 100MB de espaço livre para instalação
 
+## Roadmap
+
+### Próximas Funcionalidades
+- **Integração Completa de Configurações**: Suporte completo a temas com modos claro/escuro/automático
+- **Tabelas Estilo Excel**: Capacidades de entrada e edição de dados estilo planilha
+- **Módulo de Resolução de Equações**: Solucionador simbólico e numérico de equações
+- **Visualização Avançada de Dados**: Gráficos 3D, opções de personalização avançadas
+- **Gerenciamento de Arquivos**: Arquivos de projeto, menu de arquivos recentes, funcionalidade de salvamento automático
+
+Veja [TODO.md](TODO.md) para o roteiro completo de desenvolvimento e planejamento de funcionalidades.
+
 ## Contribuições
 
 AnaFis está aberto para contribuições. Sinta-se à vontade para enviar issues, solicitações de recursos ou pull requests para melhorar a aplicação.

@@ -2,17 +2,18 @@
 import threading
 import tkinter as tk
 from tkinter import messagebox, filedialog
-from typing import List, Optional, Callable, Union, Any, cast, Dict
+from typing import List, Optional, Callable, Union, Any, cast, Dict, Tuple, Sequence # Added Sequence
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from pandas import DataFrame as PandasDataFrame # Added for type alias
 import sympy as sp
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import pyplot as plt
 
 
 from app_files.utils.constants import TRANSLATIONS
-from app_files.gui.ajuste_curva.data_handler import read_file
+from app_files.gui.ajuste_curva.data_handler import read_file # type: ignore[reportUnknownVariableType]
 
 from app_files.gui.ajuste_curva.model_manager import ModelManager
 from app_files.gui.ajuste_curva.plot_manager import PlotManager
@@ -27,10 +28,14 @@ from app_files.gui.ajuste_curva.data_export_manager import DataExportManager
 
 # Type aliases for clarity
 FloatArray = npt.NDArray[np.float64]
-ModelFunction = Callable[[FloatArray, List[float]], FloatArray]
-DerivFunction = Callable[[FloatArray, List[float]], FloatArray]
+# Adjusted ModelFunction to match ModelCallable from model_manager.py
+ModelFunction = Callable[[Sequence[float], FloatArray], FloatArray]
+DerivFunction = Callable[[Sequence[float], FloatArray], FloatArray] # Adjusted to match ModelCallable style
+ReadFileReturnType = Tuple[FloatArray, FloatArray, FloatArray, FloatArray, PandasDataFrame]
+# Corrected CreateModelReturnType: List[DerivFunction] is not Optional
+CreateModelReturnType = Tuple[Optional[ModelFunction], List[DerivFunction]]
 
-class AjusteCurvaFrame:
+class AjusteCurvaFrame(tk.Frame):  # Changed to inherit from tk.Frame
     """GUI class for curve fitting"""
 
     def __init__(self, parent: Union[tk.Tk, tk.Toplevel, tk.Widget], language: str = 'pt') -> None:
@@ -40,13 +45,16 @@ class AjusteCurvaFrame:
             parent: Parent widget (window or frame)
             language: Interface language (default: 'pt')
         """
-        self.parent = parent
+        
+        super().__init__(parent)  # Call the parent constructor
+        self.parent = parent # Storing the Tk parent widget
         self.language: str = language
-
-        # Only set title if parent is a window
+            
+            # Only set title if parent is a window
         if isinstance(parent, (tk.Tk, tk.Toplevel)):
             parent.title(TRANSLATIONS[self.language]['curve_fitting_title'])
-          # Initialize instance variables
+
+        # Initialize instance variables for data (these don't depend on managers or UI)
         self.x: np.ndarray[Any, np.dtype[np.float64]] = np.array([])
         self.y: np.ndarray[Any, np.dtype[np.float64]] = np.array([])
         self.sigma_x: np.ndarray[Any, np.dtype[np.float64]] = np.array([])
@@ -54,52 +62,88 @@ class AjusteCurvaFrame:
         self.cabecalho: List[str] = []
         self.modelo: Optional[ModelFunction] = None
 
-        # Setup matplotlib - Create figure with two subplots (main plot and residuals)
-        self.fig, (self.ax, self.ax_res) = plt.subplots(2, 1, figsize=(10, 8),
-                                                       gridspec_kw={'height_ratios': [3, 1]},
-                                                       sharex=True)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=parent)
-        self.canvas.get_tk_widget().configure(highlightthickness=0)  # Remove border
-          # Initialize managers
+        # Initialize managers that UIBuilder's setup_ui() might depend on
         self.model_manager = ModelManager()
-        self.plot_manager = PlotManager(self.fig, self.ax, self.ax_res, self.canvas, language)
-        self.adjustment_points_manager = AdjustmentPointsManager(self, language)
-        self.parameter_estimates_manager = ParameterEstimatesManager(self, language)
-        self.custom_function_manager = CustomFunctionManager(self, self.ax, self.canvas, language)
         self.history_manager = HistoryManager(self, language)
+        # ParameterEstimatesManager is used by update_estimates_frame, which is bound in UIBuilder
+        self.parameter_estimates_manager = None
+
+        # Initialize UIBuilder and setup the UI framework
+        self.ui_builder: UIBuilder = UIBuilder(self, language)
+        self.ui_builder.setup_ui()
+
+        # Setup matplotlib components (creates figure, axes, canvas and PlotManager)
+        self._setup_plot_area()
+
+        # Initialize other managers that depend on the canvas or fully constructed UI
+        self.adjustment_points_manager = AdjustmentPointsManager(self, language)
+        self.custom_function_manager = CustomFunctionManager(self, self.ax, self.canvas, language)
         self.graph_export_manager = GraphExportManager(self, language)
         self.data_export_manager = DataExportManager(self, language)
 
-        # Create the UI builder
-        self.ui_builder = UIBuilder(self, language)
+        # Ensure this is initialized before advanced_config_dialog
+        from .parameter_estimates_manager import ParameterEstimatesManager
+        self.parameter_estimates_manager = ParameterEstimatesManager(self, self.language)
 
-        # Create the advanced config dialog
+        # Then initialize advanced_config_dialog with the parameter_estimates_manager
         self.advanced_config_dialog = AdvancedConfigDialog(
             self,
-            self.adjustment_points_manager,
-            self.parameter_estimates_manager,
             self.custom_function_manager,
-            language        )
+            self.parameter_estimates_manager,
+            self.adjustment_points_manager,
+            self.language
+        )
 
         # Model and fitting variables
         self.equacao = ""
         self.parametros: List[sp.Symbol] = []
         self.odr = None
-          # Last results
+        # Last results
         self.last_result: Any = None
         self.last_chi2: float = 0.0
         self.last_r2: float = 0.0
-          # Additional attributes to avoid pylint warnings
+        # Additional attributes to avoid pylint warnings
         self.custom_functions: Dict[str, Any] = {}
         self.adjustment_points_selection_mode: str = 'Todos'
         self.selected_adjustment_points: List[int] = []
         self.selected_point_indices: List[int] = []
+        self.estimates_frame: Optional[tk.Widget] = None
 
-        # Setup UI using the UI builder
-        self.ui_builder.setup_ui()
+        # Configure the AjusteCurvaFrame itself to allow its content to expand
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
 
-        # Initialize empty plot
-        self.parent.after(100, self.plot_manager.initialize_empty_plot)
+        # Initialize empty plot after a short delay
+        self.parent.after(100, self.plot_manager.initialize_empty_plot)    
+
+        
+    def _setup_plot_area(self) -> None:
+        """Create or recreate the plot area with canvas"""
+        # Close existing figure if any
+        if hasattr(self, 'fig') and self.fig:
+            plt.close(self.fig)
+        
+        # Use Any to avoid complex type issues with matplotlib
+        fig, axes = plt.subplots(2, 1, figsize=(10, 8))  # type: ignore
+        self.fig = fig
+        # Matplotlib returns either a single Axes or an array of Axes depending on inputs
+        # For 2x1 subplots with default squeeze=True, it returns an array
+        # Use Any to bypass type checking complications
+        self.ax: Any = axes[0] if hasattr(axes, '__len__') else axes
+        self.ax_res: Any = axes[1] if hasattr(axes, '__len__') else None
+        
+        # Create new canvas
+        if self.ui_builder.plot_area_frame is None:
+            raise RuntimeError("UIBuilder did not create the plot_area_frame.")
+            
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.ui_builder.plot_area_frame)
+        canvas_widget = self.canvas.get_tk_widget()
+        canvas_widget.configure(highlightthickness=0)
+        canvas_widget.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        
+        # Initialize plot manager with new canvas
+        self.plot_manager = PlotManager(self.fig, self.ax, self.ax_res, self.canvas, self.language)
+        
 
     # Forward UI element access to the UI builder with more concise implementation
     def _get_ui_attr(self, attr_name: str) -> Any:
@@ -164,14 +208,14 @@ class AjusteCurvaFrame:
         return self._get_ui_attr('status_label')
 
     @property
-    def save_graph_option(self) -> Optional[tk.BooleanVar]:
+    def save_graph_option(self) -> Optional[tk.StringVar]: # Changed from tk.BooleanVar
         return self._get_ui_attr('save_graph_option')
 
     def update_data_preview(self, data: pd.DataFrame) -> None:
         """Update data preview text widget - showing all data"""
         if self.data_text:
             self.data_text.delete(1.0, tk.END)
-            preview_str = data.to_string(index=False, float_format='%.4f')
+            preview_str = data.to_string(index=False, float_format='%.4f') # type: ignore[reportUnknownVariableType]
             self.data_text.insert(1.0, preview_str)
             # Update plot with data immediately
             self.plot_data_only()
@@ -188,7 +232,7 @@ class AjusteCurvaFrame:
         y_label = self.y_label_var.get() if self.y_label_var else "Y"
         title = self.title_entry.get() if self.title_entry else ""
 
-        self.plot_manager.plot_data_only(
+        self.plot_manager.plot_data_only( # type: ignore[reportUnknownMemberType]
             self.x, self.y, self.sigma_x, self.sigma_y,
             x_label=x_label,
             y_label=y_label,
@@ -215,9 +259,10 @@ class AjusteCurvaFrame:
             self.file_entry.insert(0, filename)
             # Automatically load data when file is selected
             try:
-                data = read_file(filename, self.language)
-                self.x, self.sigma_x, self.y, self.sigma_y = data[0], data[1], data[2], data[3]
-                df = data[4]
+                data_tuple = read_file(filename, self.language) # type: ignore[reportUnknownVariableType]
+                # No cast needed if read_file has proper return type annotation and Pylance infers it
+                self.x, self.sigma_x, self.y, self.sigma_y, df = data_tuple
+
                 self.update_data_preview(df)
                 with open(filename, 'r', encoding='utf-8') as f:
                     try:
@@ -225,10 +270,10 @@ class AjusteCurvaFrame:
                     except (UnicodeDecodeError, AttributeError, ValueError):
                         self.cabecalho = ['x', 'sigma_x', 'y', 'sigma_y']
 
-                # Plotar dados imediatamente apÃ³s carregar
+                # Plotar dados imediatamente após carregar
                 self.parent.after(100, self.plot_data_only)
                   # Update graph appearance after loading data
-                self.update_graph_appearance()
+                self.update_graph_appearance() # type: ignore[reportUnknownVariableType]
 
             except (FileNotFoundError, PermissionError, IOError, ValueError, TypeError):
                 # Error handling is already done in read_file method
@@ -244,13 +289,13 @@ class AjusteCurvaFrame:
         x_scale = 'log' if self.x_scale.get() == TRANSLATIONS[self.language]['log'] else 'linear'
         y_scale = 'log' if self.y_scale.get() == TRANSLATIONS[self.language]['log'] else 'linear'
 
-        self.plot_manager.ax.set_xscale(x_scale)
-        self.plot_manager.ax.set_yscale(y_scale)
-        self.plot_manager.ax_res.set_xscale(x_scale)
+        self.plot_manager.ax.set_xscale(x_scale) # type: ignore[reportUnknownVariableType]
+        self.plot_manager.ax.set_yscale(y_scale) # type: ignore[reportUnknownVariableType]
+        self.plot_manager.ax_res.set_xscale(x_scale) # type: ignore[reportUnknownVariableType]
 
         # Force canvas update
-        self.plot_manager.fig.tight_layout()
-        self.plot_manager.canvas.draw()
+        self.plot_manager.fig.tight_layout() # type: ignore[reportUnknownVariableType]
+        self.plot_manager.canvas.draw() # type: ignore[reportUnknownVariableType]
           # If we have a fit model, redraw everything
         if hasattr(self, 'last_result') and self.last_result is not None:
             self.plot_data_only()
@@ -258,7 +303,7 @@ class AjusteCurvaFrame:
             # Otherwise just update the plot with data only
             self.plot_data_only()
 
-    def apply_preset_model(self, _event: Optional[tk.Event] = None) -> None:
+    def apply_preset_model(self, _event: Optional[tk.Event] = None) -> None: # type: ignore[reportGeneralTypeIssues]
         """Apply selected preset model to equation entry
 
         Args:
@@ -273,7 +318,7 @@ class AjusteCurvaFrame:
             self.equation_entry.delete(0, tk.END)
             self.equation_entry.insert(0, equation)
             self.update_estimates_frame()
-    def validate_equation(self, _event=None) -> bool:
+    def validate_equation(self, _event: Optional[Any] = None) -> bool: # Changed _event type hint
         """Validate equation in real-time
 
         Args:
@@ -290,7 +335,7 @@ class AjusteCurvaFrame:
             if '=' in equation:
                 equation = equation.split('=')[1].strip()
 
-            sp.sympify(equation)
+            sp.sympify(equation, locals={"exp": sp.exp, "log": sp.log, "sin": sp.sin, "cos": sp.cos, "tan": sp.tan, "pi": sp.pi}) # type: ignore[reportUnknownVariableType]
             self.equation_entry.configure(foreground="black")
             return True
         except (ValueError, TypeError, SyntaxError):
@@ -305,9 +350,9 @@ class AjusteCurvaFrame:
 
         equation = self.equation_entry.get()
         if equation:
-            self.parameter_estimates_manager.update_estimates_frame(equation)
+            self.parameter_estimates_manager.update_estimates_frame(equation) # type: ignore[reportUnknownVariableType]
             # Update parametros for compatibility with other parts of the code
-            self.parametros = self.parameter_estimates_manager.parameters
+            self.parametros = self.parameter_estimates_manager.parameters # type: ignore[reportUnknownVariableType]
 
     def export_results(self):
         """Export fitting results to file"""
@@ -323,7 +368,7 @@ class AjusteCurvaFrame:
         """Perform the curve fitting operation"""
         """Perform curve fitting"""
         if not self.num_points_entry:
-            messagebox.showerror(TRANSLATIONS[self.language]['error'],
+            messagebox.showerror(TRANSLATIONS[self.language]['error'],  # type: ignore[misc]
                                 TRANSLATIONS[self.language]['invalid_points'])
             return
 
@@ -332,7 +377,7 @@ class AjusteCurvaFrame:
             if num_points <= 0:
                 raise ValueError(TRANSLATIONS[self.language]['positive_points'])
         except ValueError:
-            messagebox.showerror(TRANSLATIONS[self.language]['error'], TRANSLATIONS[self.language]['invalid_points'])
+            messagebox.showerror(TRANSLATIONS[self.language]['error'], TRANSLATIONS[self.language]['invalid_points'])  # type: ignore[misc]
             return
 
         try:
@@ -353,7 +398,7 @@ class AjusteCurvaFrame:
 
             # Get field values
             if not self.file_entry or not self.equation_entry or not self.max_iter_entry:
-                messagebox.showerror(TRANSLATIONS[self.language]['error'],
+                messagebox.showerror(TRANSLATIONS[self.language]['error'],  # type: ignore[misc]
                                     "UI elements not initialized properly")
                 return
 
@@ -364,17 +409,23 @@ class AjusteCurvaFrame:
             max_iter = int(self.max_iter_entry.get())
 
             # Get initial estimates from parameter manager
-            chute = self.parameter_estimates_manager.get_initial_estimates()
+            chute = self.parameter_estimates_manager.get_initial_estimates() # type: ignore[reportUnknownMemberType]
+            # No cast needed if get_initial_estimates has proper return type annotation
 
             # Load data
-            data = read_file(caminho, self.language)
-            self.x, self.sigma_x, self.y, self.sigma_y = data[0], data[1], data[2], data[3]
+            data_tuple = read_file(caminho, self.language) # type: ignore[reportUnknownVariableType]
+            # No cast needed if read_file has proper return type annotation
+            self.x, self.sigma_x, self.y, self.sigma_y, _ = data_tuple
+
             with open(caminho, 'r', encoding='utf-8') as f:
-                self.cabecalho = f.readline().strip().split('\t')
+                self.cabecalho = f.readline().strip().split('\\\\t')
 
             # Create model
-            model_result = self.model_manager.create_model(equacao, self.parametros)
-            self.modelo, derivadas = model_result
+            model_result_tuple = self.model_manager.create_model(equacao, self.parametros) # type: ignore[reportUnknownMemberType]
+            # Cast is appropriate here if Pylance cannot infer the precise tuple structure from create_model
+            typed_model_result = cast(CreateModelReturnType, model_result_tuple)
+            self.modelo, derivadas = typed_model_result
+
             if self.modelo is None:
                 raise RuntimeError("Model function is not initialized.")
 
@@ -384,19 +435,24 @@ class AjusteCurvaFrame:
             def run_odr():
                 try:
                     # Use cast to ensure self.modelo is not None when passed to perform_odr_fit
-                    modelo_not_none = cast(Callable, self.modelo)
-                    resultado, chi2_total, r2 = self.model_manager.perform_odr_fit(
-                        self.x, self.y, self.sigma_x, self.sigma_y,
-                        modelo_not_none, derivadas, chute, max_iter
+                    modelo_not_none = cast(ModelFunction, self.modelo)
+                    # Corrected parameter names for perform_odr_fit
+                    resultado, chi2_total, r2 = self.model_manager.perform_odr_fit( # type: ignore[reportUnknownVariableType]
+                        x=self.x, y=self.y,
+                        sigma_x=self.sigma_x, sigma_y=self.sigma_y,
+                        model_func=modelo_not_none, # Corrected name
+                        derivs=derivadas,          # Corrected name
+                        initial_params=chute,      # Corrected name
+                        max_iter=max_iter
                     )
 
                     # Store results
                     self.last_result = resultado
-                    self.last_chi2 = float(chi2_total)
-                    self.last_r2 = float(r2)
+                    self.last_chi2 = float(chi2_total) # chi2_total should be float from perform_odr_fit
+                    self.last_r2 = float(r2)         # r2 should be float from perform_odr_fit
 
                     # Add to history
-                    self.history_manager.add_fit_result(
+                    self.history_manager.add_fit_result( # type: ignore[reportUnknownMemberType]
                         resultado, chi2_total, r2, self.equacao, self.parametros
                     )
 
@@ -408,7 +464,7 @@ class AjusteCurvaFrame:
                             text=TRANSLATIONS[self.language]['fit_complete']) if status_label else None)
 
                 except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
-                    self.parent.after(0, lambda: messagebox.showerror(
+                    self.parent.after(0, lambda: messagebox.showerror(  # type: ignore[misc]
                         TRANSLATIONS[self.language]['error'],
                         f"{TRANSLATIONS[self.language]['fit_error']}: {str(e)}"
                     ))
@@ -439,11 +495,11 @@ class AjusteCurvaFrame:
             threading.Thread(target=run_odr, daemon=True).start()
 
         except (FileNotFoundError, PermissionError, ValueError, TypeError, AttributeError) as e:
-            messagebox.showerror(TRANSLATIONS[self.language]['error'], f"{TRANSLATIONS[self.language]['fit_error']}: {str(e)}")
+            messagebox.showerror(TRANSLATIONS[self.language]['error'], f"{TRANSLATIONS[self.language]['fit_error']}: {str(e)}")  # type: ignore[misc]
             if self.results_text:
-                self.results_text.insert(tk.END, f"{TRANSLATIONS[self.language]['verify_and_retry']}\n")
+                self.results_text.insert(tk.END, f"{TRANSLATIONS[self.language]['verify_and_retry']}\\n")
 
-    def mostrar_resultados(self, resultado):
+    def mostrar_resultados(self, resultado: Any):  # Added type hint for 'resultado'
         """Display fitting results in the interface
 
         Args:
@@ -479,9 +535,9 @@ class AjusteCurvaFrame:
 
             # Plot results
             num_points = int(self.num_points_entry.get()) if self.num_points_entry else 1000
-            self.plot_manager.plot_fit_results(
+            self.plot_manager.plot_fit_results( # type: ignore[reportUnknownMemberType]
                 self.x, self.y, self.sigma_x, self.sigma_y,
-                self.modelo, resultado, self.last_chi2, self.last_r2,
+                self.modelo, resultado, self.last_chi2, self.last_r2, # Removed unnecessary cast
                 self.equacao, self.parametros, num_points,
                 x_label=x_label,
                 y_label=y_label,
@@ -493,9 +549,9 @@ class AjusteCurvaFrame:
                 self.custom_function_manager.update_plot()
 
         except (AttributeError, ValueError, TypeError, RuntimeError) as e:
-            messagebox.showerror(TRANSLATIONS[self.language]['error'], f"Erro ao mostrar resultados: {str(e)}")
+            messagebox.showerror(TRANSLATIONS[self.language]['error'], f"Erro ao mostrar resultados: {str(e)}")  # type: ignore[misc]
 
-    def update_graph_appearance(self, _event=None):
+    def update_graph_appearance(self, _event: Optional[tk.Event] = None): # type: ignore[reportGeneralTypeIssues]
         """Update graph title, labels and aspect ratio
 
         Args:
@@ -511,18 +567,18 @@ class AjusteCurvaFrame:
         y_scale = 'log' if (self.y_scale and self.y_scale.get() == TRANSLATIONS[self.language]['log']) else 'linear'
 
         # Use plot manager to update appearance
-        self.plot_manager.update_graph_appearance(
+        self.plot_manager.update_graph_appearance( # type: ignore[reportUnknownMemberType]
             title=title,
             x_label=x_label,
             y_label=y_label
         )
           # Also update the scales
-        self.plot_manager.ax.set_xscale(x_scale)
-        self.plot_manager.ax.set_yscale(y_scale)
-        self.plot_manager.fig.tight_layout()
-        self.plot_manager.canvas.draw()
+        self.plot_manager.ax.set_xscale(x_scale) # type: ignore[reportUnknownVariableType]
+        self.plot_manager.ax.set_yscale(y_scale) # type: ignore[reportUnknownVariableType]
+        self.plot_manager.fig.tight_layout() # type: ignore[reportUnknownVariableType]
+        self.plot_manager.canvas.draw() # type: ignore[reportUnknownVariableType]
 
-    def switch_language(self, language):
+    def switch_language(self, language: str):  # Added type hint for language
         """Switch the interface language
 
         Args:
@@ -532,12 +588,17 @@ class AjusteCurvaFrame:
         self.language = language
         # Update languages for all managers
         self.adjustment_points_manager.language = language
-        self.parameter_estimates_manager.language = language
         self.custom_function_manager.language = language
         self.history_manager.language = language
         self.graph_export_manager.language = language
         self.data_export_manager.language = language
-        self.plot_manager.set_language(language)
+        self.plot_manager.set_language(language) 
+
+        if self.parameter_estimates_manager is None:
+            self.parameter_estimates_manager = ParameterEstimatesManager(self, language)
+        else:
+            self.parameter_estimates_manager.language = language
+            self.parameter_estimates_manager.parent = self
 
         # Store current state
         current_data = ""
@@ -566,13 +627,34 @@ class AjusteCurvaFrame:
                 current_y_scale = 'log' if self.y_scale.get() == TRANSLATIONS['pt']['log'] or self.y_scale.get() == TRANSLATIONS['en']['log'] else 'linear'
 
             # Clear and rebuild UI
-            for widget in self.parent.winfo_children():
+            for widget in self.winfo_children():  # Changed from self.parent.winfo_children()
                 widget.destroy()
-
-            # Update UI builder language and rebuild
+                
             self.ui_builder.language = language
             self.ui_builder.setup_ui()
 
+            # RECREATE plot area and canvas
+            self._setup_plot_area()
+            
+            # REINITIALIZE managers that depend on the UI
+            self.adjustment_points_manager = AdjustmentPointsManager(self, language)
+            self.custom_function_manager = CustomFunctionManager(self, self.ax, self.canvas, language)
+            self.graph_export_manager = GraphExportManager(self, language)
+            self.data_export_manager = DataExportManager(self, language)
+            
+            # Recreate advanced config dialog
+            self.advanced_config_dialog = AdvancedConfigDialog(
+            self, 
+            self.custom_function_manager,
+            self.parameter_estimates_manager,
+            self.adjustment_points_manager,  # Add this parameter
+            self.language
+            )
+            
+            # Update custom function manager references
+            self.custom_function_manager.ax = self.ax
+            self.custom_function_manager.canvas = self.canvas
+            
             # Restore values
             if self.data_text and current_data.strip():
                 self.data_text.insert(1.0, current_data)
@@ -587,7 +669,7 @@ class AjusteCurvaFrame:
             if self.x_scale:
                 self.x_scale.set(TRANSLATIONS[self.language][current_x_scale])
             if self.y_scale:
-                self.y_scale.set(TRANSLATIONS[self.language][current_y_scale])        # Update plot appearance with new language
+                self.y_scale.set(TRANSLATIONS[self.language][current_y_scale])# Update plot appearance with new language
         if hasattr(self, 'plot_manager') and self.plot_manager:
             # If we have data, replot it to ensure the plot is visible with new language
             if hasattr(self, 'x') and len(self.x) > 0:
@@ -600,9 +682,9 @@ class AjusteCurvaFrame:
                     self.plot_data_only()
             else:
                 # No data, just refresh labels on empty plot
-                self.plot_manager.refresh_current_plot()
+                self.plot_manager.refresh_current_plot() # type: ignore[reportUnknownVariableType]
 
-            self.update_graph_appearance()
+            self.update_graph_appearance() # type: ignore[reportUnknownVariableType]
 
     def cleanup(self):
         """Clean up resources when closing the interface"""
@@ -638,7 +720,7 @@ class AjusteCurvaFrame:
         """Show advanced configuration dialog"""
         self.advanced_config_dialog.show_dialog()
 
-    def update_custom_functions(self, custom_functions=None):
+    def update_custom_functions(self, custom_functions: Optional[Dict[str, Any]] = None):  # Added type hint for custom_functions
         """Update the custom functions for curve fitting
 
         Args:
@@ -651,7 +733,7 @@ class AjusteCurvaFrame:
         if hasattr(self, 'update_fit_with_current_points'):
             self.update_fit_with_current_points()
 
-    def update_selection_mode(self, selection_mode):
+    def update_selection_mode(self, selection_mode: str):  # Added type hint for selection_mode
         """Update the selection mode for adjustment points
 
         Args:
@@ -665,7 +747,7 @@ class AjusteCurvaFrame:
 
         # Update any UI elements if needed
 
-    def update_adjustment_points(self, selected_indices):
+    def update_adjustment_points(self, selected_indices: List[int]):
         """Update the selected adjustment points
 
         Args:

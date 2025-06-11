@@ -2,12 +2,17 @@
 from tkinter import ttk
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
+from typing import TYPE_CHECKING, Optional # Ensure Optional is imported
+
 from app_files.utils.constants import TRANSLATIONS
+
+if TYPE_CHECKING: # Added TYPE_CHECKING block
+    from .main_gui import AjusteCurvaFrame
 
 class UIBuilder:
     """Handles building the UI components for curve fitting"""
     
-    def __init__(self, parent, language='pt'):
+    def __init__(self, parent: 'AjusteCurvaFrame', language: str ='pt') -> None: # Added type hints
         """Initialize the UI builder
         
         Args:
@@ -33,12 +38,13 @@ class UIBuilder:
         self.progress_var = tk.IntVar()
         self.status_label = None
         self.save_graph_option = tk.StringVar(value="full")
+        self.plot_area_frame: Optional[ttk.Frame] = None # Ensure this line is present and correct
         
     def setup_ui(self):
         """Set up the complete user interface"""
         # Create main frame
-        self.main_frame = ttk.Frame(self.parent.parent)
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        self.main_frame = ttk.Frame(self.parent)  # Changed parent
+        self.main_frame.grid(row=0, column=0, sticky="nsew") # Changed pack to grid
         
         # Configure main frame with 2 columns for horizontal layout
         self.main_frame.rowconfigure(0, weight=1)
@@ -49,36 +55,22 @@ class UIBuilder:
         control_frame = ttk.Frame(self.main_frame, padding="5", width=400)
         control_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         control_frame.grid_propagate(False)  # Prevent shrinking
+        # Configure control_frame for its child (control_paned)
+        control_frame.rowconfigure(0, weight=1)
+        control_frame.columnconfigure(0, weight=1)
         
-        # Right panel for plots
-        plot_frame = ttk.Frame(self.main_frame, width=800)
-        plot_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
-        plot_frame.grid_propagate(False)  # Prevent shrinking
-        
-        # IMPORTANT CHANGE: Recreate the canvas with plot_frame as the parent
-        # First destroy the old canvas that was created with the wrong parent
-        if hasattr(self.parent, 'canvas') and self.parent.canvas:
-            self.parent.canvas.get_tk_widget().destroy()
-        
-        # Create a new canvas with the correct parent
-        self.parent.canvas = self.parent.canvas.__class__(self.parent.fig, master=plot_frame)
-        
-        # Setup matplotlib canvas
-        canvas_widget = self.parent.canvas.get_tk_widget()
-        canvas_widget.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        
-        # Make plot_frame use grid layout
-        plot_frame.rowconfigure(0, weight=1)
-        plot_frame.columnconfigure(0, weight=1)
-          # Reinitialize plot manager with the new canvas and current language
-        self.parent.plot_manager = self.parent.plot_manager.__class__(self.parent.fig, self.parent.ax, self.parent.ax_res, self.parent.canvas, self.language)
-        
-        # Update custom function manager to use the new canvas
-        self.parent.custom_function_manager = self.parent.custom_function_manager.__class__(self.parent, self.parent.ax, self.parent.canvas, self.parent.language)
+        # Right panel for plots (this is where AjusteCurvaFrame will place its canvas)
+        # We create it here so AjusteCurvaFrame can use it as a master for the canvas.
+        # UIBuilder itself no longer tries to manage/recreate the canvas.
+        self.plot_area_frame = ttk.Frame(self.main_frame, width=800) # This frame will be the master for the canvas
+        self.plot_area_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+        self.plot_area_frame.grid_propagate(False)  # Prevent shrinking
+        self.plot_area_frame.rowconfigure(0, weight=1) # Allow canvas to expand within plot_area_frame
+        self.plot_area_frame.columnconfigure(0, weight=1) # Allow canvas to expand within plot_area_frame
         
         # Create vertical paned window for control sections
         control_paned = ttk.PanedWindow(control_frame, orient=tk.VERTICAL)
-        control_paned.pack(fill=tk.BOTH, expand=True)
+        control_paned.grid(row=0, column=0, sticky="nsew") # Changed pack to grid
         
         # Setup individual sections
         self._setup_data_input_frame(control_paned)
@@ -86,10 +78,11 @@ class UIBuilder:
         self._setup_graph_settings_frame(control_paned)
         self._setup_progress_frame(control_paned)
         self._setup_results_frame(control_paned)
-    def _setup_data_input_frame(self, control_paned):
+    def _setup_data_input_frame(self, control_paned: ttk.PanedWindow) -> None: # Added type hint
         """Set up the data input frame"""
         data_frame = ttk.LabelFrame(control_paned, text=TRANSLATIONS[self.language]['data_input'])
-        control_paned.add(data_frame, weight=1)
+        # Add data input frame to control_paned
+        control_paned.add(data_frame, weight=1) # type: ignore[reportUnknownMemberType]
         
         # Configure data frame to expand properly
         data_frame.columnconfigure(1, weight=1)
@@ -114,10 +107,12 @@ class UIBuilder:
         
         self.data_text = ScrolledText(preview_frame, height=8, width=50)
         self.data_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-    def _setup_parameters_frame(self, control_paned):
+
+    def _setup_parameters_frame(self, control_paned: ttk.PanedWindow) -> None: # Added type hint
         """Set up the parameters frame"""
         params_frame = ttk.LabelFrame(control_paned, text=TRANSLATIONS[self.language]['fitting_parameters'])
-        control_paned.add(params_frame, weight=1)
+        # Add parameters frame to control_paned
+        control_paned.add(params_frame, weight=1) # type: ignore[reportUnknownMemberType]
         
         # Model presets - More compact layout
         params_frame.columnconfigure(1, weight=1)
@@ -138,7 +133,12 @@ class UIBuilder:
                                          state="readonly",
                                          width=20)
         self.model_selector.grid(row=0, column=1, padx=5, pady=2, sticky="ew")
-        self.model_selector.bind("<<ComboboxSelected>>", self.parent.apply_preset_model)
+
+        def _on_combobox_selected_callback(event: tk.Event) -> None: # type: ignore[reportGeneralTypeIssues]
+            self.parent.apply_preset_model(event) # type: ignore[reportUnknownMemberType]
+            
+        self.model_selector.bind("<<ComboboxSelected>>", _on_combobox_selected_callback) # type: ignore[reportUnknownArgumentType]
+        # self.model_selector.pack(pady=5) # Removed redundant pack call
         
         ttk.Label(left_params_frame, text=TRANSLATIONS[self.language]['equation']).grid(row=1, column=0, sticky="w")
         self.equation_entry = ttk.Entry(left_params_frame, width=20)
@@ -169,11 +169,12 @@ class UIBuilder:
         self.num_points_entry.grid(row=0, column=3, padx=5)
         
         # Create parameter estimates frame (hidden by default)
-        self.parent.estimates_frame = self.parent.parameter_estimates_manager.create_estimates_frame(params_frame)
-    def _setup_graph_settings_frame(self, control_paned):
+        # self.parent.estimates_frame = self.parent.parameter_estimates_manager.create_estimates_frame(params_frame) # type: ignore[reportUnknownMemberType]
+    def _setup_graph_settings_frame(self, control_paned: ttk.PanedWindow) -> None: # Added type hint
         """Set up the graph settings frame"""
         graph_settings_frame = ttk.LabelFrame(control_paned, text=TRANSLATIONS[self.language]['graph_settings'])
-        control_paned.add(graph_settings_frame, weight=1)
+        # Add graph settings frame to control_paned
+        control_paned.add(graph_settings_frame, weight=1) # type: ignore[reportUnknownMemberType]
         
         ttk.Label(graph_settings_frame, text=TRANSLATIONS[self.language]['title']).grid(row=0, column=0, sticky="w", padx=5, pady=2)
         self.title_entry = ttk.Entry(graph_settings_frame, width=40)
@@ -207,10 +208,11 @@ class UIBuilder:
         self.y_scale.set(TRANSLATIONS[self.language]['linear'])
         self.y_scale.grid(row=0, column=3, padx=5)
         self.y_scale.bind('<<ComboboxSelected>>', lambda e: self.parent.update_scales())
-    def _setup_progress_frame(self, control_paned):
+    def _setup_progress_frame(self, control_paned: ttk.PanedWindow) -> None: # Added type hint
         """Set up the fitting actions frame"""
         fitting_frame = ttk.LabelFrame(control_paned, text=TRANSLATIONS[self.language].get('fitting_actions', 'Ajuste e Progresso'))
-        control_paned.add(fitting_frame, weight=1)
+        # Add progress frame to control_paned
+        control_paned.add(fitting_frame, weight=0) # type: ignore[reportUnknownMemberType]
         
         self.progress_var = tk.IntVar()
         self.progress_bar = ttk.Progressbar(
@@ -230,16 +232,23 @@ class UIBuilder:
             command=self.parent.perform_fit
         ).grid(row=2, column=0, pady=8, padx=5, sticky="ew")
 
-    def _setup_results_frame(self, control_paned):
+    def _setup_results_frame(self, control_paned: ttk.PanedWindow) -> None: # Added type hint
         """Set up the results frame"""
         results_frame = ttk.LabelFrame(control_paned, text=TRANSLATIONS[self.language]['results'])
-        control_paned.add(results_frame, weight=2)
+        # Add results frame to control_paned
+        control_paned.add(results_frame, weight=1) # type: ignore[reportUnknownMemberType]
+        
+        # Configure results_frame for its children
+        results_frame.rowconfigure(0, weight=1)  # For results_text
+        results_frame.rowconfigure(1, weight=0)  # For buttons_frame
+        results_frame.columnconfigure(0, weight=1)
+
         self.results_text = ScrolledText(results_frame, height=8, width=40)
-        self.results_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.results_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5) # Changed pack to grid
         
         # Action buttons frame
         buttons_frame = ttk.Frame(results_frame)
-        buttons_frame.pack(fill=tk.X, padx=5, pady=5)
+        buttons_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5) # Changed pack to grid
         
         # Save graph frame with dropdown
         save_frame = ttk.Frame(buttons_frame)
@@ -278,7 +287,7 @@ class UIBuilder:
         ).grid(row=0, column=2, pady=5, padx=2, sticky="ew")
         
         # Add history navigation
-        self.parent.history_manager.setup_ui(buttons_frame)
+        self.parent.history_manager.setup_ui(buttons_frame) # type: ignore[reportArgumentType]
         
         # Configure column weights
         for i in range(3):

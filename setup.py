@@ -3,7 +3,7 @@ import os
 from setuptools import setup, find_packages
 
 # Read the README file for long description
-def read_readme():
+def read_readme() -> str:
     """Read README.md file content for package long description.
     
     Returns:

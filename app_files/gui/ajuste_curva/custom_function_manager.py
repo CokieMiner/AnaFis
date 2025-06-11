@@ -2,7 +2,7 @@
 import tkinter as tk
 import numpy as np
 from tkinter import ttk, messagebox
-from typing import TYPE_CHECKING, Tuple, List, Optional
+from typing import TYPE_CHECKING, Tuple, List, Optional, Any, Dict # Added Dict
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -38,6 +38,7 @@ class CustomFunctionManager:
         self.scrollbar: Optional[ttk.Scrollbar] = None
         self.func_entry: Optional[ttk.Entry] = None
         self.color_var: Optional[tk.StringVar] = None
+        self.parent_frame_widget: Optional[tk.Widget] = None # Added to store parent_frame for UI
         
     def setup_ui(self, parent_frame: tk.Widget, maximize_scrollbox: bool = False) -> None:
         """Set up UI elements in the given parent frame
@@ -46,6 +47,7 @@ class CustomFunctionManager:
             parent_frame: Frame to place the UI elements in
             maximize_scrollbox: Whether to maximize the scrollbox size
         """
+        self.parent_frame_widget = parent_frame # Store parent_frame
         # Configure parent to allow expansion
         parent_frame.columnconfigure(0, weight=1)
         
@@ -74,9 +76,9 @@ class CustomFunctionManager:
         self.functions_list.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         
         # Add scrollbar to functions list
-        self.scrollbar = ttk.Scrollbar(func_frame, orient="vertical", command=self.functions_list.yview)
+        self.scrollbar = ttk.Scrollbar(func_frame, orient="vertical", command=self.functions_list.yview) # type: ignore[arg-type]
         self.scrollbar.grid(row=0, column=1, sticky="ns")
-        self.functions_list.configure(yscrollcommand=self.scrollbar.set)
+        self.functions_list.configure(yscrollcommand=self.scrollbar.set) # type: ignore[misc]
         
         # Load existing functions if any
         for func in self.custom_functions:
@@ -134,10 +136,10 @@ class CustomFunctionManager:
             
         function_text = self.func_entry.get().strip()
         if not function_text:
-            messagebox.showwarning(
+            messagebox.showwarning( # type: ignore[misc]
                 TRANSLATIONS[self.language].get('warning', "Aviso"), 
                 "Por favor, insira uma função válida."
-            )
+            ) 
             return
             
         # Create a displayable function entry with color information
@@ -162,16 +164,16 @@ class CustomFunctionManager:
         if self.functions_list is None:
             return
             
-        selected = self.functions_list.curselection()
+        selected: Tuple[int, ...] = self.functions_list.curselection() # type: ignore[assignment]
         if not selected:
-            messagebox.showwarning(
+            messagebox.showwarning( # type: ignore[misc]
                 TRANSLATIONS[self.language].get('warning', "Aviso"), 
                 "Selecione uma função para remover."
-            )
+            ) 
             return
             
         # Get index of selected item
-        idx = int(selected[0])
+        idx = int(selected[0]) # type: ignore[arg-type]
         
         # Remove from listbox
         self.functions_list.delete(idx)
@@ -193,10 +195,10 @@ class CustomFunctionManager:
         """Preview custom functions on the plot"""
         # Get x data from parent
         if not hasattr(self.parent, 'x') or len(self.parent.x) == 0:
-            messagebox.showinfo(
+            messagebox.showinfo( # type: ignore[misc]
                 TRANSLATIONS[self.language].get('info', "Informação"), 
                 "Carregue dados primeiro para visualizar as funções."
-            )
+            ) 
             return
         
         # Use the common plotting function
@@ -244,11 +246,16 @@ class CustomFunctionManager:
                     try:
                         # Cast x to float to avoid numpy type issues
                         x = float(x_val)
-                        y = eval(func_expr, {"x": x, "np": np, "sin": np.sin, "cos": np.cos, 
-                                             "tan": np.tan, "exp": np.exp, "log": np.log,
-                                             "sqrt": np.sqrt, "pi": np.pi})
+                        # Provide a more controlled environment for eval
+                        local_vars: Dict[str, Any] = {"x": x, "np": np}
+                        # Add common math functions from numpy to the scope
+                        for func_name in ["sin", "cos", "tan", "exp", "log", "sqrt", "pi", "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "log10"]:
+                            if hasattr(np, func_name):
+                                local_vars[func_name] = getattr(np, func_name)
+                        
+                        y = eval(func_expr, {"__builtins__": {}}, local_vars) # type: ignore[reportEvalExpression]
                         y_values.append(float(y))
-                    except:
+                    except Exception: # Catch specific eval errors if possible, broader for now
                         y_values.append(float('nan'))  # Use NaN for invalid values
                 
                 # Update y-range
@@ -260,7 +267,7 @@ class CustomFunctionManager:
                     y_max = max(y_max, func_y_max)
                 
                 # Plot the function
-                line, = self.ax.plot(x_range, y_values, color=color, linestyle="--", alpha=0.7, linewidth=1.5)
+                line, = self.ax.plot(x_range, y_values, color=color, linestyle="--", alpha=0.7, linewidth=1.5) # type: ignore[misc]
                 self.custom_function_lines.append(line)
             
             except Exception as e:
@@ -274,11 +281,61 @@ class CustomFunctionManager:
         
         # Force tight layout and update canvas
         if hasattr(self.parent, 'plot_manager'):
-            self.parent.plot_manager.fig.tight_layout()
+            self.parent.plot_manager.fig.tight_layout() # type: ignore[reportUnknownMemberType]
         self.canvas.draw()    
         
     def save_functions(self) -> None:
         """Save the custom functions"""
         # Save the functions to the parent if it has the appropriate method
         if hasattr(self.parent, 'update_custom_functions'):
-            self.parent.update_custom_functions(self.custom_functions)
+            self.parent.update_custom_functions(self.custom_functions) # type: ignore[reportUnknownMemberType]
+
+    def load_functions(self, functions: List[Tuple[str, str]]) -> None:
+        """Load custom functions, typically from a saved state."""
+        self.custom_functions = functions
+        if self.functions_list:
+            self.functions_list.delete(0, tk.END)
+            for func_text, color in self.custom_functions:
+                self.functions_list.insert(tk.END, f"{func_text} [{color}]")
+        self.update_plot()
+
+    def clear_functions(self) -> None:
+        """Clear all custom functions."""
+        self.custom_functions = []
+        self.custom_function_lines = []
+        if self.functions_list:
+            self.functions_list.delete(0, tk.END)
+        self.update_plot()
+
+    def get_functions(self) -> List[Tuple[str, str]]:
+        """Return the current list of custom functions."""
+        return self.custom_functions
+
+    def set_language(self, language: str) -> None:
+        """Update the language for UI elements."""
+        self.language = language
+        # Re-setup UI elements that depend on language
+        # This requires the parent_frame to be stored or passed again
+        if self.parent_frame_widget: # Check if parent_frame_widget was stored
+            # Simplified re-setup: destroy and recreate, or update texts
+            # For a full re-translation, you might need to destroy and recreate widgets
+            # or have a more granular update mechanism.
+            # Here, we'll just update existing labels/buttons if they exist.
+
+            # Example: Update instruction label (assuming it's stored or accessible)
+            # if hasattr(self, 'instruction_label') and self.instruction_label:
+            # self.instruction_label.config(text=TRANSLATIONS[self.language].get('custom_funcs_desc', 'Adicione funções para mostrar no gráfico:'))
+            
+            # This is a placeholder for a more robust re-translation logic.
+            # A full re-build might be:
+            # for widget in self.parent_frame_widget.winfo_children():
+            #     widget.destroy()
+            # self.setup_ui(self.parent_frame_widget, maximize_scrollbox=getattr(self,'_maximize_scrollbox_state', False))
+            # However, this can be complex if state needs to be preserved perfectly.
+            # For now, we assume that the main GUI will handle full rebuilds if necessary,
+            # and this manager just updates its internal language state.
+            # If specific UI elements need dynamic text updates, they should be handled explicitly.
+            pass # Placeholder for actual UI text updates
+
+        # Update plot (e.g., if any plot elements use language-specific text)
+        self.update_plot()

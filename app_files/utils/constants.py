@@ -3,7 +3,9 @@ Translation constants for the AnaFis application.
 Organized by module/component for easier maintenance.
 """
 
-TRANSLATIONS = {
+from typing import Dict, Any
+
+TRANSLATIONS: Dict[str, Dict[str, Any]] = {
     'pt': {
         # ===============================
         # MAIN APPLICATION (main.py)

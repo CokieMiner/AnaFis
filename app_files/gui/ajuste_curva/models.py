@@ -1,6 +1,10 @@
-from typing import Protocol, List, Callable
+from typing import Protocol, List, Callable, TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
+
+if TYPE_CHECKING:
+    import tkinter as tk
+    from scipy.odr import Output
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -30,15 +34,20 @@ class ODRModelImplementation:
 
 class ProgressTracker:
     """Track ODR fitting progress"""
-    def __init__(self, progress_var, status_label, odr_object) -> None:
+    progress_var: 'tk.IntVar'  # Forward reference for tkinter.IntVar
+    status_label: 'tk.Label'  # Forward reference for tkinter.Label
+    odr: 'Output'          # Forward reference for scipy.odr.Output
+    last_iter: int
+
+    def __init__(self, progress_var: 'tk.IntVar', status_label: 'tk.Label', odr_object: 'Output') -> None:
         self.progress_var = progress_var
         self.status_label = status_label
         self.odr = odr_object
         self.last_iter = 0
         
     def update(self) -> None:
-        if self.odr.iwork is not None:
-            current_iter = int(self.odr.iwork[0])
+        if self.odr.iwork is not None:  # type: ignore[attr-defined]
+            current_iter = int(self.odr.iwork[0])  # type: ignore[attr-defined]
             if current_iter != self.last_iter:
                 self.last_iter = current_iter
                 self.status_label.configure(text=f"Iteration: {current_iter}")

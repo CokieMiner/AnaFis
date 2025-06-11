@@ -1,7 +1,9 @@
 """Advanced configuration dialog for curve fitting"""
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING
+from tkinter import messagebox
+from typing import TYPE_CHECKING, Optional
+import logging
 
 from app_files.utils.constants import TRANSLATIONS
 
@@ -15,25 +17,26 @@ if TYPE_CHECKING:
 class AdvancedConfigDialog:
     """Dialog for advanced configuration options"""
     
-    def __init__(self, parent_frame: 'AjusteCurvaFrame', adjustment_points_manager: 'AdjustmentPointsManager', 
-                 parameter_estimates_manager: 'ParameterEstimatesManager', 
-                 custom_function_manager: 'CustomFunctionManager', language: str = 'pt') -> None:
+    def __init__(self, parent_frame: 'AjusteCurvaFrame', 
+             custom_function_manager: Optional['CustomFunctionManager'],
+             parameter_estimates_manager: Optional['ParameterEstimatesManager'],
+             adjustment_points_manager: Optional['AdjustmentPointsManager'],
+             language: str = 'pt') -> None:
         """Initialize the advanced configuration dialog
         
         Args:
             parent_frame: The main AjusteCurvaFrame instance that owns this dialog
-            adjustment_points_manager: Manager for adjustment points
-            parameter_estimates_manager: Manager for parameter estimates
             custom_function_manager: Manager for custom functions
+            parameter_estimates_manager: Manager for parameter estimates
+            adjustment_points_manager: Manager for adjustment points
             language: Interface language
         """
         self.parent = parent_frame
         self.language = language
-        
-        # Store manager references
-        self.adjustment_points_manager = adjustment_points_manager
-        self.parameter_estimates_manager = parameter_estimates_manager
+        self.dialog = None
         self.custom_function_manager = custom_function_manager
+        self.parameter_estimates_manager = parameter_estimates_manager
+        self.adjustment_points_manager = adjustment_points_manager  # Store the manager
     
     def show_dialog(self) -> None:
         """Show the advanced configuration dialog"""
@@ -62,12 +65,29 @@ class AdvancedConfigDialog:
         adjust_tab.rowconfigure(1, weight=1)  # Make the row with scrollbox expandable
         
         # Set up the adjustment points UI with expanded scrollbox
+        if self.adjustment_points_manager is None:
+            logging.error("adjustment_points_manager is None, cannot set up UI")
+            messagebox.showerror(  # type: ignore
+                TRANSLATIONS[self.language].get('error', 'Error'), 
+                TRANSLATIONS[self.language].get('config_error_adjust_manager', 'Configuration error: adjustment points manager not initialized')
+            )
+            return
+            
         self.adjustment_points_manager.setup_ui(adjust_tab, maximize_scrollbox=True)
         
         # === Second tab: Initial Estimates ===
         estimates_tab = ttk.Frame(notebook)
         notebook.add(estimates_tab, text=TRANSLATIONS[self.language].get('initial_estimates', 'Estimativas iniciais'))
         
+        # Add a safety check before calling setup_ui
+        if self.parameter_estimates_manager is None:
+            logging.error("parameter_estimates_manager is None, cannot set up UI")
+            messagebox.showerror(  # type: ignore
+                TRANSLATIONS[self.language].get('error', 'Error'), 
+                TRANSLATIONS[self.language].get('config_error_param_manager', 'Configuration error: parameter estimates manager not initialized')
+            )
+            return
+            
         # Set up the parameter estimates UI
         self.parameter_estimates_manager.setup_ui(estimates_tab)
         
@@ -80,13 +100,24 @@ class AdvancedConfigDialog:
         funcs_tab.rowconfigure(1, weight=1)  # Make the row with scrollbox expandable
         
         # Set up the custom functions UI with expanded scrollbox
+        if self.custom_function_manager is None:
+            logging.error("custom_function_manager is None, cannot set up UI")
+            messagebox.showerror(  # type: ignore
+                TRANSLATIONS[self.language].get('error', 'Error'), 
+                TRANSLATIONS[self.language].get('config_error_custom_func', 'Configuration error: custom function manager not initialized')
+            )
+            return
+            
         self.custom_function_manager.setup_ui(funcs_tab, maximize_scrollbox=True)
-          # Function to handle popup closing
+        
+        # Function to handle popup closing
         def on_close() -> None:
             # Save adjustment points when closing
-            self.adjustment_points_manager.save_points()
+            if self.adjustment_points_manager is not None:
+                self.adjustment_points_manager.save_points()
             # Save custom functions
-            self.custom_function_manager.save_functions()
+            if self.custom_function_manager is not None:
+                self.custom_function_manager.save_functions()
             # Destroy the popup
             popup.destroy()
         
