@@ -10,6 +10,16 @@ from typing import Optional, List, Callable, Any
 # Add app_files to path before importing from it
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Apply startup optimizations first
+try:
+    from build_scripts.optimize_startup import optimize_imports
+    optimize_imports()
+except ImportError:
+    # Fallback optimization if build_scripts not available
+    import gc
+    gc.disable()  # Disable GC during startup
+    threading.Timer(3.0, gc.enable).start()  # Re-enable after 3 seconds
+
 # Import only what's needed for the splash screen initially
 from app_files.utils.user_preferences import user_preferences
 from app_files.utils.constants import TRANSLATIONS
