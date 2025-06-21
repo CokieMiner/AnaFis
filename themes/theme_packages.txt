@@ -1,0 +1,12 @@
+# Available TTK Theme Packages
+# Add one theme package name per line
+# These will be checked for availability when the application starts
+# Format: just the package name that can be installed via pip
+
+ttkthemes
+tkinter.dnd2
+ttkbootstrap
+azure-theme
+forest-theme
+sun-valley-theme
+breeze-theme

@@ -4,81 +4,113 @@
 
 AnaFis is a comprehensive physics data analysis application with a modern graphical interface designed for researchers, students, and professionals working with experimental data. The application provides powerful tools for curve fitting and uncertainty propagation with real-time visualization capabilities.
 
+**Recent Updates (v10):**
+- 🎨 **Vista theme as default** - Modern, consistent UI across all components
+- 🛠️ **Enhanced stability** - Fixed threading issues and memory leaks
+- ⚡ **Performance optimizations** - Background loading
+- 🧹 **Code quality improvements** - Comprehensive cleanup, better error handling
+
 ## Installation
 
-AnaFis requires Python 3.8 or newer.
+**🐍 Python 3.8+ Required**
 
-### Pre-built Executable (Windows)
+### Virtual Environment Installation (Recommended)
 
-For Windows users, a standalone executable is available that doesn't require Python installation:
+AnaFis should be installed in a virtual environment to avoid dependency conflicts and ensure a clean installation.
 
-1. Download the latest release from the releases section
-2. Extract the `AnaFis` folder to your desired location
-3. Run `AnaFis.exe` directly
+#### Step 1: Create and Activate Virtual Environment
 
-The executable is portable and includes all dependencies.
+**Windows:**
+```cmd
+# Create virtual environment
+python -m venv anafis-env
 
-### Option 1: Install using setup.py (Recommended)
-
-Clone or download the repository and run:
-
-```bash
-python setup.py install
+# Activate virtual environment
+anafis-env\Scripts\activate
 ```
 
-Or for development installation:
+**macOS/Linux:**
+```bash
+# Create virtual environment
+python3 -m venv anafis-env
+
+# Activate virtual environment
+source anafis-env/bin/activate
+```
+
+#### Step 2: Install Dependencies
+
+With the virtual environment activated:
 
 ```bash
+# Upgrade pip first
+pip install --upgrade pip
+
+# Install AnaFis dependencies
+pip install -r requirements.txt
+```
+
+#### Step 3: Run AnaFis
+
+```bash
+python run.py
+```
+
+### Alternative: Development Installation
+
+For developers who want to modify the code:
+
+```bash
+# After activating virtual environment
 pip install -e .
-```
-
-### Option 2: Manual dependency installation
-
-If you prefer to install dependencies manually:
-
-```bash
-pip install numpy scipy sympy matplotlib pandas
 ```
 
 **Note:** `tkinter` comes pre-installed with Python and doesn't need to be installed separately.
 
 ## Running the Application
 
-### After installation with setup.py:
-If you installed using `python setup.py install`, you can run:
+### From Virtual Environment
 
-```bash
-anafis
-```
-
-### Running from source:
-To start AnaFis from the source directory, run:
+After activating your virtual environment:
 
 ```bash
 python run.py
 ```
 
-The application will show a splash screen while loading and then open the main interface.
+The application will show a splash screen with startup progress and timing information, then open the main interface.
+
+### Startup Performance
+
+AnaFis features optimized startup with:
+- **Background module loading** for faster initial display
+- **Timing metrics** displayed during startup
+- **Resource optimization** for reduced memory usage
 
 ## Main Features
 
 ### Core Functionality
-- **Curve Fitting**: Advanced curve fitting with user-defined functions and built-in models
-- **Uncertainty Propagation**: Calculate uncertainty propagation for arbitrary formulas using symbolic mathematics
-- **Multi-language Support**: Interface available in Portuguese and English
-- **Real-time Visualization**: Interactive plots that update in real-time during fitting
+- **Curve Fitting**: Advanced curve fitting with ODR (Orthogonal Distance Regression)
+- **Uncertainty Propagation**: Calculate uncertainty propagation using symbolic mathematics
+- **Multi-language Support**: Portuguese and English with runtime switching
+- **Real-time Visualization**: Interactive plots with residuals analysis
 
-### Interface Features
-- **Tabbed Interface**: Work with multiple analyses simultaneously
-- **Language Switching**: Change interface language on-the-fly without restarting
-- **Modern UI**: Clean, intuitive interface built with tkinter
-- **Export Capabilities**: Export graphs in various formats (PNG, PDF, SVG)
+### Enhanced Interface (v1.0)
+- **Vista Theme**: Modern, consistent theme across all components
+- **Tabbed Interface**: Work with multiple analyses simultaneously  
+- **Settings System**: Comprehensive preferences management
+- **Error Handling**: Robust error recovery and user feedback
 
 ### Advanced Tools
-- **Custom Functions**: Define and use custom mathematical models for fitting
-- **Parameter Estimation**: Advanced parameter estimation with uncertainty calculation
-- **Data Import**: Support for CSV and tab-separated text files
-- **History Management**: Keep track of previous analyses and results
+- **Custom Functions**: Define mathematical models with parameter estimation
+- **History Management**: Track and restore previous analyses
+- **Data Export**: Multiple formats (PNG, PDF, SVG) with configurable options
+- **Plugin System**: Extensible architecture for custom functionality
+
+### Performance Features
+- **Background Loading**: Non-blocking module initialization
+- **Memory Management**: Automatic cleanup and resource optimization
+- **Threading Safety**: Proper matplotlib integration without GUI warnings
+- **Session Limiting**: Prevents system overload from too many restored tabs
 
 ## Data File Format
 
@@ -134,23 +166,50 @@ AnaFis supports both Portuguese and English interfaces. You can switch languages
 
 ## Troubleshooting
 
-### Common Issues
+### Virtual Environment Issues
+- **Environment not found**: Ensure you created the environment with `python -m venv anafis-env`
+- **Activation fails**: Check you're using the correct activation command for your OS
+- **Dependencies missing**: Verify virtual environment is activated before installing requirements
+
+### Common Runtime Issues
 - **Fit does not converge**: Try different initial parameter values or verify data quality
 - **Large fitting errors**: Review uncertainty values and model appropriateness  
-- **Missing tkinter**: Install via your OS package manager or ensure it's included in Python installation
-- **Import errors**: Verify all dependencies are installed with correct versions
+- **Startup errors**: Check all dependencies are installed in the virtual environment
 
 ### Performance Tips
 - For large datasets, consider data preprocessing or sampling
 - Complex custom functions may require longer computation time
-- Save your work frequently when working with large analyses
+- The application automatically limits session restoration to 10 tabs for optimal performance
+- Use the timing information displayed at startup to monitor performance
 
-## Building Executable
+## Virtual Environment Management
 
-To create a standalone Windows executable:
+### Deactivating Environment
+```bash
+deactivate
+```
+
+### Updating Dependencies
+```bash
+# With virtual environment activated
+pip install --upgrade -r requirements.txt
+```
+
+### Removing Environment
+```bash
+# Deactivate first, then remove folder
+deactivate
+rm -rf anafis-env  # Linux/macOS
+rmdir /s anafis-env  # Windows
+```
+
+## Building Executable (Optional)
+
+If you want to create a standalone executable after setting up the virtual environment:
 
 ### Prerequisites
 ```bash
+# With virtual environment activated
 pip install pyinstaller
 ```
 
@@ -177,25 +236,43 @@ pip install pyinstaller
 - Optimized for size and performance
 - Creates a portable distribution
 
-For more details, see [DISTRIBUTION.md](DISTRIBUTION.md).
+**Note:** Building executables is optional. The recommended approach is to use the virtual environment installation.
 
 ## System Requirements
 
 - **Operating System**: Windows, macOS, or Linux
 - **Python**: Version 3.8 or newer
 - **Memory**: Minimum 4GB RAM recommended
-- **Storage**: At least 100MB free space for installation
+- **Storage**: At least 200MB free space for virtual environment and dependencies
+- **Display**: 1024x768 minimum resolution recommended
+
+## Dependencies
+
+AnaFis requires the following Python packages (automatically installed with `requirements.txt`):
+
+```
+numpy>=1.21.0
+scipy>=1.7.0
+matplotlib>=3.5.0
+sympy>=1.8.0
+pandas>=1.3.0
+```
+
 
 ## Roadmap
 
-### Upcoming Features
-- **Complete Settings Integration**: Full theme support with light/dark/auto modes
+### Next Release (v11)
 - **Excel-like Tables**: Spreadsheet-style data entry and editing capabilities  
-- **Equation Solving Module**: Symbolic and numerical equation solver
-- **Enhanced Data Visualization**: 3D plotting, advanced customization options
-- **File Management**: Project files, recent files menu, auto-save functionality
+- **Enhanced Data Import**: Improved file format support and validation
+- **Advanced Export Options**: More customization for data and graph export
 
-See [TODO.md](TODO.md) for the complete development roadmap and feature planning.
+### Future (v12)
+- **Equation Solving Module**: Symbolic and numerical equation solver
+- **3D Visualization**: Advanced plotting capabilities
+- **Plugin System**: Full extensibility framework
+- **Advanced Data Analysis**: Statistical tools and enhanced mathematical functions
+
+See [TODO.md](TODO.md) for the complete development roadmap and detailed feature planning.
 
 ## Contributing
 
