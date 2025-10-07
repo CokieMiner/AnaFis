@@ -9,4 +9,7 @@ pandas>=1.3.0
 # Machine learning and advanced fitting
 scikit-learn>=1.0.0
 
+# GUI enhancements
+ttkthemes>=3.2.0
+
 # Note: tkinter comes pre-installed with Python
