@@ -557,7 +557,7 @@ class AjusteCurvaFrame(tk.Frame):  # Changed to inherit from tk.Frame
         """Apply custom column assignments from user selection
 
         Args:
-            assignments: List of assignments for each column (e.g., ['x', 'σx (uncertainty in x)', 'y', 'σy (uncertainty in y)'])
+            assignments: List of assignments for each column (e.g., ['x', 'sig_x', 'y', 'sig_y', 'ignore'])
         """
         if self.current_raw_data is None:
             return
@@ -570,16 +570,17 @@ class AjusteCurvaFrame(tk.Frame):  # Changed to inherit from tk.Frame
         sigma_x_data = None
         sigma_y_data = None
 
-        # Extract data based on assignments
+        # Extract data based on assignments (using internal keys)
         for i, assignment in enumerate(assignments):
             if assignment == "x":
                 x_data = data[:, i].astype(np.float64)
             elif assignment == "y":
                 y_data = data[:, i].astype(np.float64)
-            elif assignment == "σx (uncertainty in x)":
+            elif assignment == "sig_x":
                 sigma_x_data = data[:, i].astype(np.float64)
-            elif assignment == "σy (uncertainty in y)":
+            elif assignment == "sig_y":
                 sigma_y_data = data[:, i].astype(np.float64)
+            # "ignore" columns are simply skipped
 
         # Set data with defaults for missing uncertainties
         if x_data is not None:
@@ -596,14 +597,14 @@ class AjusteCurvaFrame(tk.Frame):  # Changed to inherit from tk.Frame
         # Mark that custom assignment is active
         self.using_custom_assignment = True
 
-        # Update current format description
+        # Update current format description (using internal keys)
         format_parts = []
         for assignment in assignments:
-            if assignment == "— (ignore)":
+            if assignment == "ignore":
                 continue
-            elif assignment == "σx (uncertainty in x)":
+            elif assignment == "sig_x":
                 format_parts.append("σx")
-            elif assignment == "σy (uncertainty in y)":
+            elif assignment == "sig_y":
                 format_parts.append("σy")
             else:
                 format_parts.append(assignment)

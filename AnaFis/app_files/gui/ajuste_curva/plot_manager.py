@@ -316,7 +316,8 @@ class PlotManager:
                 positive_x = x[x > 0]
                 if positive_x.size > 0:
                     x_min_val = np.min(positive_x)  # Find smallest positive value
-                else:  # All values are <=0, log scale is problematic. Fallback or raise error.                    # Fallback to linear for safety, or handle as error
+                else:  # All values are <=0, log scale is problematic. Fallback or raise error.                    
+                    # Fallback to linear for safety, or handle as error
                     x_fit = np.linspace(x_min_val, x_max_val, num_points).astype(
                         np.float64
                     )
