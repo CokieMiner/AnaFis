@@ -517,7 +517,7 @@ class AplicativoUnificado:
         theme_manager.initialize(self.root)
 
         # Apply user's preferred theme (or default)
-        preferred_theme = user_preferences.get_preference("theme", "default")
+        preferred_theme = user_preferences.get_preference("theme", "plastik")
         theme_manager.apply_theme(preferred_theme)
 
         # No progress bar updates here; handled in run.py
